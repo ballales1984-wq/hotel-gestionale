@@ -6,6 +6,7 @@ const NAV_ITEMS = [
     { to: '/', icon: '📊', label: 'Dashboard' },
     { to: '/report', icon: '🧮', label: 'Calcolo ABC' },
     { to: '/simulation', icon: '🎯', label: 'Simulazioni What-If' },
+    { to: '/ai-insights', icon: '✨', label: 'AI Insights' },
   ]},
   { section: 'Configurazione', items: [
     { to: '/periods', icon: '📅', label: 'Periodi' },

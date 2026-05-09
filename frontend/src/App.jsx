@@ -10,6 +10,7 @@ import ABCReportPage from './pages/ABCReportPage'
 import SimulationPage from './pages/SimulationPage'
 import AllocationsPage from './pages/AllocationsPage'
 import PeriodsPage from './pages/PeriodsPage'
+import AiInsightsPage from './pages/AiInsightsPage'
 
 function ProtectedRoute({ children }) {
   const token = useAuthStore(s => s.token)
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="periods" element={<PeriodsPage />} />
         <Route path="report" element={<ABCReportPage />} />
         <Route path="simulation" element={<SimulationPage />} />
+        <Route path="ai-insights" element={<AiInsightsPage />} />
       </Route>
     </Routes>
   )
