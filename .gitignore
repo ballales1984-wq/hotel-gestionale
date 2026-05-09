@@ -1,0 +1,71 @@
+# ─── Python ──────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ─── Environment ─────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── Docker ───────────────────────────────────────────
+.docker/
+docker-compose.override.yml
+
+# ─── Data & Uploads ───────────────────────────────────
+data/
+*.db
+*.duckdb
+uploads/
+
+# ─── Logs ─────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Node (frontend) ─────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+
+# ─── OS generated files ────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ─── Alembic migrations backup ───────────────────────
+alembic/versions/*.bak

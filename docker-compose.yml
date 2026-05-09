@@ -1,0 +1,175 @@
+version: "3.9"
+
+services:
+  # ─── Database PostgreSQL ──────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: hotel_abc_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hotel_abc
+      POSTGRES_USER: hotel_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hotel_secure_2025}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=it_IT.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hotel_user -d hotel_abc"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hotel_net
+
+  # ─── Redis Cache ─────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: hotel_abc_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_secure_2025}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - hotel_net
+
+  # ─── Backend FastAPI ──────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hotel_abc_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://hotel_user:${POSTGRES_PASSWORD:-hotel_secure_2025}@postgres:5432/hotel_abc
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_2025}@redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-change_me_in_production_32chars_min}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ORIGINS: '["http://localhost:3000","http://localhost:8088"]'
+    volumes:
+      - ./backend:/app
+      - ./data/uploads:/app/data/uploads
+      - ./data/duckdb:/app/data/duckdb
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - hotel_net
+
+  # ─── ETL Worker (Prefect) ─────────────────────────────────────────────────
+  etl_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.etl
+    container_name: hotel_abc_etl
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://hotel_user:${POSTGRES_PASSWORD:-hotel_secure_2025}@postgres:5432/hotel_abc
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_2025}@redis:6379/0
+      PREFECT_API_URL: http://prefect:4200/api
+    volumes:
+      - ./backend:/app
+      - ./data/uploads:/app/data/uploads
+      - ./data/duckdb:/app/data/duckdb
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - hotel_net
+
+  # ─── Frontend React ───────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: ${FRONTEND_TARGET:-development}
+    container_name: hotel_abc_frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:8000
+      VITE_APP_NAME: "Hotel ABC Platform"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - hotel_net
+
+  # ─── Apache Superset BI ───────────────────────────────────────────────────
+  superset:
+    image: apache/superset:3.1.0
+    container_name: hotel_abc_superset
+    restart: unless-stopped
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-superset_secret_2025_change_me}
+      DATABASE_URL: postgresql+psycopg2://hotel_user:${POSTGRES_PASSWORD:-hotel_secure_2025}@postgres:5432/hotel_abc_superset
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_2025}@redis:6379/1
+    volumes:
+      - superset_data:/app/superset_home
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py
+    ports:
+      - "8088:8088"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - hotel_net
+
+  # ─── Nginx Reverse Proxy ──────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: hotel_abc_nginx
+    restart: unless-stopped
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/ssl:/etc/nginx/ssl:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+      - superset
+    networks:
+      - hotel_net
+
+# ─── Volumes ──────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  superset_data:
+    driver: local
+
+# ─── Networks ─────────────────────────────────────────────────────────────
+networks:
+  hotel_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
