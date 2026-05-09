@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # ── Database ────────────────────────────────────────────────────────────
     database_url: str = Field(
-        "postgresql+asyncpg://hotel_user:hotel_secure_2025@localhost:5432/hotel_abc",
+        "sqlite+aiosqlite:///./hotel_abc.db",
         env="DATABASE_URL",
     )
     database_pool_size: int = 10

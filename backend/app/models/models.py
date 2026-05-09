@@ -12,7 +12,7 @@ from sqlalchemy import (
     CheckConstraint, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import UUID, JSON
 import enum
 
 from app.db.database import Base
@@ -196,7 +196,7 @@ class Activity(Base, UUIDMixin, TimestampMixin):
     volume_driver_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("cost_drivers.id"), nullable=True
     )
-    extra_data: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    extra_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     # relationships
     cost_center: Mapped[Optional["CostCenter"]] = relationship(back_populates="activities")
