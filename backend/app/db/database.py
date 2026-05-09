@@ -13,7 +13,7 @@ from app.config import get_settings
 
 settings = get_settings()
 
-# ── Naming convention per Alembic migrations ──────────────────────────────
+# ── Naming convention per Alembic migrations ─────────────────────────────────
 convention = {
     "ix": "ix_%(column_0_label)s",
     "uq": "uq_%(table_name)s_%(column_0_name)s",
@@ -30,12 +30,17 @@ class Base(DeclarativeBase):
 
 
 # ── Engine ────────────────────────────────────────────────────────────────
+engine_kwargs = {
+    "echo": settings.debug,
+    "future": True,
+}
+if "sqlite" not in settings.database_url:
+    engine_kwargs["pool_size"] = settings.database_pool_size
+    engine_kwargs["max_overflow"] = settings.database_max_overflow
+
 engine = create_async_engine(
     settings.database_url,
-    pool_size=settings.database_pool_size,
-    max_overflow=settings.database_max_overflow,
-    echo=settings.debug,
-    future=True,
+    **engine_kwargs,
 )
 
 # ── Session factory ───────────────────────────────────────────────────────
