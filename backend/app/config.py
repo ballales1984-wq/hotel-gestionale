@@ -46,12 +46,12 @@ class Settings(BaseSettings):
     cors_origins: List[str] = ["http://localhost:3000", "http://localhost:8088"]
 
     # ── File Upload ─────────────────────────────────────────────────────────
-    upload_dir: str = "/app/data/uploads"
+    upload_dir: str = Field("../data/uploads", env="UPLOAD_DIR")
     max_upload_size_mb: int = 50
     allowed_extensions: List[str] = [".csv", ".xlsx", ".xls"]
 
     # ── DuckDB ──────────────────────────────────────────────────────────────
-    duckdb_path: str = "/app/data/duckdb/analytics.db"
+    duckdb_path: str = Field("../data/duckdb/analytics.db", env="DUCKDB_PATH")
 
     # ── ABC Engine ──────────────────────────────────────────────────────────
     abc_max_iterations: int = 10        # max iterazioni ribaltamenti circolari
