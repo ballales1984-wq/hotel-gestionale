@@ -1,0 +1,16 @@
+matricola,nome,attivita,ore,costo_orario,percentuale
+001,Mario Rossi,REC-001,30.7,18.5,0.2
+001,Mario Rossi,REC-002,126.3,18.5,0.8
+002,Luigi Verdi,REC-003,86.1,19.0,0.56
+002,Luigi Verdi,REC-004,66.9,19.0,0.44
+003,Anna Neri,HSK-001,54.7,16.5,0.37
+003,Anna Neri,HSK-002,32.8,16.5,0.22
+003,Anna Neri,HSK-003,60.5,16.5,0.41
+004,Sofia Gialli,HSK-001,50.5,16.5,0.32
+004,Sofia Gialli,HSK-002,105.5,16.5,0.68
+005,Carlo Blu,FNB-001,138.7,22.0,0.96
+005,Carlo Blu,FNB-002,6.3,22.0,0.04
+006,Elena Bianchi,FNB-003,65.6,21.5,0.46
+006,Elena Bianchi,FNB-004,77.4,21.5,0.54
+007,Marco Viola,MNT-001,78.2,20.0,0.54
+007,Marco Viola,MNT-002,65.8,20.0,0.46

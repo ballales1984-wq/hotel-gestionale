@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # System deps
 RUN apt-get update && apt-get install -y \
@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Python deps
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements_ai.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements_ai.txt
 
 # App code
 COPY . .

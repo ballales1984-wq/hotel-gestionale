@@ -17,6 +17,7 @@ call venv\Scripts\activate
 
 echo [INFO] Installazione dipendenze (potrebbe richiedere qualche minuto la prima volta)...
 pip install -r requirements.txt
+pip install -r requirements_ai.txt
 
 echo.
 echo [INFO] Avvio server FastAPI locale sulla porta 8000...

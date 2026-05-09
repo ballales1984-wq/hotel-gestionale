@@ -2,6 +2,7 @@
 Hotel ABC Platform — Database Models
 Tutti i modelli SQLAlchemy per l'ORM.
 """
+from __future__ import annotations
 import uuid
 from datetime import datetime, date
 from decimal import Decimal
@@ -12,7 +13,7 @@ from sqlalchemy import (
     CheckConstraint, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import UUID, JSON
+from sqlalchemy.dialects.postgresql import UUID
 import enum
 
 from app.db.database import Base
@@ -196,7 +197,7 @@ class Activity(Base, UUIDMixin, TimestampMixin):
     volume_driver_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("cost_drivers.id"), nullable=True
     )
-    extra_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    extra_data: Mapped[Optional[dict]] = mapped_column(Text, nullable=True)
 
     # relationships
     cost_center: Mapped[Optional["CostCenter"]] = relationship(back_populates="activities")
