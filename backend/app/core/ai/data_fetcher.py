@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 from typing import Optional, Dict, List
 import pandas as pd
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.models import (
@@ -131,7 +131,7 @@ class AIDataFetcher:
                 AccountingPeriod.month,
                 func.coalesce(
                     func.sum(
-                        func.case(
+                        case(
                             (Service.service_type == ServiceType.ACCOMMODATION, ABCResult.output_volume),
                             else_=0
                         )
@@ -152,7 +152,7 @@ class AIDataFetcher:
                 AccountingPeriod.month,
                 func.coalesce(
                     func.sum(
-                        func.case(
+                        case(
                             (
                                 Service.service_type.in_([ServiceType.RESTAURANT, ServiceType.BREAKFAST]),
                                 ABCResult.output_volume
@@ -177,7 +177,7 @@ class AIDataFetcher:
                 AccountingPeriod.month,
                 func.coalesce(
                     func.sum(
-                        func.case(
+                        case(
                             (CostDriver.code == "DRV-ORE", DriverValue.value),
                             else_=0
                         )
@@ -198,7 +198,7 @@ class AIDataFetcher:
                 AccountingPeriod.month,
                 func.coalesce(
                     func.sum(
-                        func.case(
+                        case(
                             (Service.service_type == ServiceType.CONGRESS, ABCResult.output_volume),
                             else_=0
                         )

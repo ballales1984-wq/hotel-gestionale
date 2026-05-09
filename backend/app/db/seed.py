@@ -93,72 +93,90 @@ async def seed(db: AsyncSession):
     from passlib.context import CryptContext
     pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-    admin = User(
-        email="admin@hotel-abc.it",
-        full_name="Amministratore Sistema",
-        hashed_password=pwd.hash("HotelABC2025!"),
-        role=UserRole.ADMIN,
-    )
-    db.add(admin)
-
-    director = User(
-        email="direzione@hotel-abc.it",
-        full_name="Direttore Generale",
-        hashed_password=pwd.hash("Direzione2025!"),
-        role=UserRole.DIRECTOR,
-    )
-    db.add(director)
+    for user_data in [
+        {"email": "admin@hotel-abc.it", "name": "Amministratore Sistema", "role": UserRole.ADMIN, "pass": "HotelABC2025!"},
+        {"email": "direzione@hotel-abc.it", "name": "Direttore Generale", "role": UserRole.DIRECTOR, "pass": "Direzione2025!"}
+    ]:
+        from sqlalchemy import select
+        res = await db.execute(select(User).where(User.email == user_data["email"]))
+        if not res.scalar_one_or_none():
+            u = User(
+                email=user_data["email"],
+                full_name=user_data["name"],
+                hashed_password=pwd.hash(user_data["pass"]),
+                role=user_data["role"],
+            )
+            db.add(u)
+            logger.info(f"Creato utente: {user_data['email']}")
+        else:
+            logger.info(f"Utente già esistente: {user_data['email']}")
 
     # ── Centri di costo ───────────────────────────────────────────────────
     cc_map = {}
     for cc_data in COST_CENTERS:
-        cc = CostCenter(
-            code=cc_data["code"],
-            name=cc_data["name"],
-            department=cc_data["department"],
-        )
-        db.add(cc)
-        await db.flush()
+        res = await db.execute(select(CostCenter).where(CostCenter.code == cc_data["code"]))
+        cc = res.scalar_one_or_none()
+        if not cc:
+            cc = CostCenter(
+                code=cc_data["code"],
+                name=cc_data["name"],
+                department=cc_data["department"],
+            )
+            db.add(cc)
+            await db.flush()
+            logger.info(f"Creato centro di costo: {cc_data['code']}")
         cc_map[cc_data["code"]] = cc
 
     # ── Attività ──────────────────────────────────────────────────────────
     act_map = {}
     for act_data in ACTIVITIES:
-        act = Activity(
-            code=act_data["code"],
-            name=act_data["name"],
-            department=act_data["department"],
-            cost_center_id=cc_map[act_data["cc"]].id,
-            is_support_activity=act_data.get("is_support", False),
-        )
-        db.add(act)
-        await db.flush()
+        res = await db.execute(select(Activity).where(Activity.code == act_data["code"]))
+        act = res.scalar_one_or_none()
+        if not act:
+            act = Activity(
+                code=act_data["code"],
+                name=act_data["name"],
+                department=act_data["department"],
+                cost_center_id=cc_map[act_data["cc"]].id,
+                is_support_activity=act_data.get("is_support", False),
+            )
+            db.add(act)
+            await db.flush()
+            logger.info(f"Creata attività: {act_data['code']}")
         act_map[act_data["code"]] = act
 
     # ── Servizi ───────────────────────────────────────────────────────────
     svc_map = {}
     for svc_data in SERVICES:
-        svc = Service(
-            code=svc_data["code"],
-            name=svc_data["name"],
-            service_type=svc_data["type"],
-            output_unit=svc_data["unit"],
-        )
-        db.add(svc)
-        await db.flush()
+        res = await db.execute(select(Service).where(Service.code == svc_data["code"]))
+        svc = res.scalar_one_or_none()
+        if not svc:
+            svc = Service(
+                code=svc_data["code"],
+                name=svc_data["name"],
+                service_type=svc_data["type"],
+                output_unit=svc_data["unit"],
+            )
+            db.add(svc)
+            await db.flush()
+            logger.info(f"Creato servizio: {svc_data['code']}")
         svc_map[svc_data["code"]] = svc
 
     # ── Driver ────────────────────────────────────────────────────────────
     drv_map = {}
     for drv_data in DRIVERS:
-        drv = CostDriver(
-            code=drv_data["code"],
-            name=drv_data["name"],
-            driver_type=drv_data["type"],
-            unit=drv_data["unit"],
-        )
-        db.add(drv)
-        await db.flush()
+        res = await db.execute(select(CostDriver).where(CostDriver.code == drv_data["code"]))
+        drv = res.scalar_one_or_none()
+        if not drv:
+            drv = CostDriver(
+                code=drv_data["code"],
+                name=drv_data["name"],
+                driver_type=drv_data["type"],
+                unit=drv_data["unit"],
+            )
+            db.add(drv)
+            await db.flush()
+            logger.info(f"Creato driver: {drv_data['code']}")
         drv_map[drv_data["code"]] = drv
 
     # ── Regole di allocazione esempio ────────────────────────────────────
