@@ -8,8 +8,8 @@ echo.
 cd backend
 
 if not exist "venv\" (
-    echo [INFO] Creazione ambiente virtuale Python in corso...
-    python -m venv venv
+    echo [INFO] Creazione ambiente virtuale con Python 3.12 in corso...
+    py -3.12 -m venv venv
 )
 
 echo [INFO] Attivazione ambiente virtuale...
