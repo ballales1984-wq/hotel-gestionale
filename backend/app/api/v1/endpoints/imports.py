@@ -100,8 +100,8 @@ async def import_accounting(
     # Mappa centri di costo
     cc_map = await _load_cost_center_map(db)
 
-        for i, row in enumerate(df.iter_rows(named=True)):
-            try:
+    for i, row in enumerate(df.iter_rows(named=True)):
+        try:
                 amount = Decimal(str(row.get("importo", 0) or 0))
                 if amount == 0:
                     warnings.append(f"Riga {i+2}: importo zero, saltata")
