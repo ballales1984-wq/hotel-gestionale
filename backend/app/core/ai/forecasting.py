@@ -48,7 +48,7 @@ class ForecastEngine:
         # Prophet richiede colonne 'ds' (datestamp) e 'y' (valore)
         prophet_df = pd.DataFrame({
             'ds': pd.to_datetime(df[date_col]),
-            'y': df[metric_col].fillna(method='ffill') # Semplice fill per NaN
+            'y': df[metric_col].ffill() # Semplice fill per NaN
         })
 
         # Inizializza e allena Prophet

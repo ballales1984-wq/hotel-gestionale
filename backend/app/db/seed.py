@@ -12,6 +12,8 @@ from app.db.database import AsyncSessionFactory, create_tables
 from app.models.models import (
     Activity, AllocationRule, AllocationLevel, CostCenter, CostDriver,
     Department, DriverType, Service, ServiceType, User, UserRole,
+    AccountingPeriod, ABCResult, CostItem, Employee, LaborAllocation,
+    DriverValue, ServiceRevenue
 )
 
 logger = logging.getLogger(__name__)

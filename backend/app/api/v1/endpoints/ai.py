@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from pydantic import BaseModel
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import logging
 
 # Import AI Engines
@@ -78,6 +78,8 @@ def _get_mock_data_for_discovery() -> pd.DataFrame:
         'ore_lavorate': np.random.normal(1000, 100, n),
         'notti_vendute': np.random.normal(500, 50, n),
         'coperti': np.random.normal(800, 80, n),
+        'mq': np.random.normal(500, 50, n),
+        'eventi': np.random.normal(30, 10, n),
         'overhead_cost': np.random.normal(15000, 2000, n)
     })
 
@@ -112,9 +114,8 @@ def _get_mock_data_for_anomalies() -> pd.DataFrame:
 
 def _get_fallback_forecast(periods: int) -> List[Dict[str, Any]]:
     """Genera una previsione piatta (media) in caso di errore."""
-    import datetime
     from dateutil.relativedelta import relativedelta
-    current_date = datetime.date.today()
+    current_date = date.today()
     avg_value = 1000.0  # valore placeholder
     results = []
     for i in range(periods):

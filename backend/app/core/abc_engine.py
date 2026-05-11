@@ -458,6 +458,11 @@ class ABCEngine:
                         Decimal("0.01"), rounding=ROUND_HALF_UP
                     )
                     direct_share = allocated - labor_share - overhead_share
+                else:
+                    # Se il costo totale dell'attività è zero, distribuisce equamente
+                    labor_share = allocated
+                    overhead_share = Decimal("0")
+                    direct_share = Decimal("0")
                     svc.labor_cost += labor_share
                     svc.overhead_cost += overhead_share
                     svc.direct_cost += direct_share
