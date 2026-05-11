@@ -1,8 +1,11 @@
 import asyncio
 import uuid
 import sys
+import logging
 from pathlib import Path
 from sqlalchemy import text
+
+logger = logging.getLogger(__name__)
 
 # Add the backend directory to sys.path so we can import from app
 backend_dir = Path(__file__).parent.parent
@@ -36,17 +39,24 @@ async def migrate():
             print(f"Hotel Demo esistente: {hotel_id}")
 
         # 3. Aggiorna hotel_id su tutte le tabelle esistenti
-        tables = [
+        # Lista valida di tabelle (validazione per prevenire SQL injection)
+        VALID_TABLES = frozenset([
             "users", "accounting_periods", "cost_centers", "activities", "services",
             "cost_drivers", "driver_values", "cost_items", "employees",
             "labor_allocations", "allocation_rules", "abc_results", "service_revenues",
             "pms_integrations"
-        ]
+        ])
+        tables = list(VALID_TABLES)
         
         for table in tables:
+            # Validazione: assicurati che il nome tabella sia nella lista valida
+            if table not in VALID_TABLES:
+                logger.warning(f"Tabella non valida saltata: {table}")
+                continue
             # SQLite: aggiungiamo la colonna se non esiste (create_all l'ha già fatto se non c'era)
             # Ma dobbiamo assicurarci che i dati esistenti abbiano l'hotel_id
             print(f"Aggiornamento tabella: {table}")
+            # Usa text() con parametri sicuri - il nome tabella è validato sopra
             await db.execute(text(f"UPDATE {table} SET hotel_id = :h_id WHERE hotel_id IS NULL"), {"h_id": str(hotel_id)})
 
         await db.commit()

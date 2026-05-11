@@ -487,21 +487,24 @@ async def export_abc_to_excel(
             "Costo Unitario": float(r.cost_per_unit) if r.cost_per_unit else 0,
         })
 
-    # 2. Carica Dettaglio Attività
+    # 2. Carica Dettaglio Attività (solo record con activity_id non null)
     from app.models.models import Activity
     query_act = (
         select(ABCResult, Service, Activity)
         .join(Service, ABCResult.service_id == Service.id)
-        .join(Activity, ABCResult.activity_id == Activity.id)
+        .outerjoin(Activity, ABCResult.activity_id == Activity.id)  # outerjoin per gestire activity_id null
         .where(ABCResult.period_id == period_id)
+        .where(ABCResult.activity_id != None)  # solo dettaglio attività, non aggregati
     )
     res_act = await db.execute(query_act)
     act_data = []
     for r, s, a in res_act.all():
+        act_name = a.name if a else "N/A"
+        dept = a.department.value if a else "N/A"
         act_data.append({
             "Servizio": s.name,
-            "Attività": a.name,
-            "Reparto": a.department.value,
+            "Attività": act_name,
+            "Reparto": dept,
             "Costo Allocato": float(r.total_cost),
             "di cui Personale": float(r.labor_cost),
         })

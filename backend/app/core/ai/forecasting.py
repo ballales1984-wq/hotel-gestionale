@@ -88,10 +88,12 @@ class ForecastEngine:
 
     def _fallback_forecast(self, df: pd.DataFrame, metric_col: str, periods: int, freq: str) -> List[Dict[str, Any]]:
         """Previsione naive basata sull'ultima media mobile se mancano dati storici."""
-        last_val = 0
-        if not df.empty:
-            last_val = df[metric_col].mean() # Media per smussare
-
+        last_val = 0.0
+        if not df.empty and metric_col in df.columns:
+            mean_val = df[metric_col].mean()
+            if pd.notna(mean_val):
+                last_val = float(mean_val)
+        
         results = []
         # Genera date fittizie per l'output (semplificazione per PoC)
         import datetime
@@ -106,8 +108,8 @@ class ForecastEngine:
                 
             results.append({
                 "date": current_date.strftime('%Y-%m-%d'),
-                "predicted_value": round(float(last_val), 2),
-                "lower_bound": round(float(last_val) * 0.9, 2),
-                "upper_bound": round(float(last_val) * 1.1, 2)
+                "predicted_value": round(last_val, 2),
+                "lower_bound": round(last_val * 0.9, 2) if last_val else 0.0,
+                "upper_bound": round(last_val * 1.1, 2) if last_val else 0.0
             })
         return results
