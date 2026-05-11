@@ -25,11 +25,12 @@ export default function AiInsightsPage() {
 
   const CustomTooltipForecast = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null
+    const p = payload[0]
     return (
       <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--bg-border)', padding: '10px', borderRadius: 'var(--radius-sm)' }}>
         <p style={{ color: 'var(--text-secondary)', fontSize: 12, marginBottom: 4 }}>{label}</p>
-        <p style={{ color: '#0ea5e9', fontWeight: 600 }}>Previsione: {payload[0].value.toFixed(0)}</p>
-        <p style={{ color: 'var(--text-muted)', fontSize: 11 }}>Range: {payload[0].payload.lower_bound.toFixed(0)} - {payload[0].payload.upper_bound.toFixed(0)}</p>
+        <p style={{ color: '#0ea5e9', fontWeight: 600 }}>Previsione: {p.value?.toFixed(0) ?? 'N/A'}</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: 11 }}>Range: {(p.payload?.lower_bound ?? 0).toFixed(0)} - {(p.payload?.upper_bound ?? 0).toFixed(0)}</p>
       </div>
     )
   }
@@ -64,8 +65,8 @@ export default function AiInsightsPage() {
                   padding: '12px', marginBottom: 12, borderRadius: '0 var(--radius-sm) var(--radius-sm) 0'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <strong style={{ fontSize: 13, color: 'var(--color-danger)' }}>Record ID: {a.record_id}</strong>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Score: {a.anomaly_score.toFixed(2)}</span>
+                    <strong style={{ fontSize: 13, color: 'var(--color-danger)' }}>Record ID: {a.record_id ?? 'N/A'}</strong>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Score: {(a.anomaly_score ?? 0).toFixed(2)}</span>
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-primary)', marginBottom: 4 }}>
                     <span style={{ color: 'var(--text-muted)' }}>Causa radice probabile:</span> <span className="badge badge-neutral">{a.root_cause_driver}</span>

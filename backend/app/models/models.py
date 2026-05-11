@@ -76,6 +76,22 @@ class ServiceType(str, enum.Enum):
     OTHER = "altro"
 
 
+class ExternalSystemType(str, enum.Enum):
+    PMS_CSV = "pms_csv"
+    PMS_API = "pms_api"
+    ERP_CSV = "erp_csv"
+    ERP_API = "erp_api"
+    MANUAL = "manuale"
+
+
+class MappingType(str, enum.Enum):
+    COST_CENTER = "centro_di_costo"
+    ACTIVITY = "attivita"
+    SERVICE = "servizio"
+    DRIVER = "driver"
+    ACCOUNT = "conto_contabile"
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # MIXIN
 # ─────────────────────────────────────────────────────────────────────────────
@@ -99,12 +115,34 @@ class UUIDMixin:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# HOTEL (TENANT)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class Hotel(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "hotels"
+
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    address: Mapped[Optional[str]] = mapped_column(String(255))
+    vat_number: Mapped[Optional[str]] = mapped_column(String(50))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    settings: Mapped[Optional[dict]] = mapped_column(Text, nullable=True) # JSON config
+
+    # relationships
+    users: Mapped[List["User"]] = relationship(back_populates="hotel")
+    periods: Mapped[List["AccountingPeriod"]] = relationship(back_populates="hotel")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # UTENTI
 # ─────────────────────────────────────────────────────────────────────────────
 
 class User(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "users"
 
+    hotel_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=True
+    )
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -117,8 +155,11 @@ class User(Base, UUIDMixin, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
+    hotel: Mapped[Optional["Hotel"]] = relationship(back_populates="users")
+
     __table_args__ = (
         Index("ix_users_email", "email"),
+        Index("ix_users_hotel", "hotel_id"),
     )
 
 
@@ -129,6 +170,9 @@ class User(Base, UUIDMixin, TimestampMixin):
 class AccountingPeriod(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "accounting_periods"
 
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
     year: Mapped[int] = mapped_column(Integer, nullable=False)
     month: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)  # es. "Gennaio 2025"
@@ -144,10 +188,12 @@ class AccountingPeriod(Base, UUIDMixin, TimestampMixin):
     labor_allocations: Mapped[List["LaborAllocation"]] = relationship(
         back_populates="period"
     )
+    hotel: Mapped["Hotel"] = relationship(back_populates="periods")
 
     __table_args__ = (
-        UniqueConstraint("year", "month", name="uq_periods_year_month"),
+        UniqueConstraint("hotel_id", "year", "month", name="uq_periods_hotel_year_month"),
         CheckConstraint("month >= 1 AND month <= 12", name="ck_periods_month_range"),
+        Index("ix_periods_hotel", "hotel_id"),
     )
 
 
@@ -158,7 +204,10 @@ class AccountingPeriod(Base, UUIDMixin, TimestampMixin):
 class CostCenter(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "cost_centers"
 
-    code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
+    code: Mapped[str] = mapped_column(String(20), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     department: Mapped[Department] = mapped_column(SAEnum(Department), nullable=False)
     parent_id: Mapped[Optional[uuid.UUID]] = mapped_column(
@@ -172,6 +221,11 @@ class CostCenter(Base, UUIDMixin, TimestampMixin):
     activities: Mapped[List["Activity"]] = relationship(back_populates="cost_center")
     cost_items: Mapped[List["CostItem"]] = relationship(back_populates="cost_center")
 
+    __table_args__ = (
+        UniqueConstraint("hotel_id", "code", name="uq_cost_centers_hotel_code"),
+        Index("ix_cost_centers_hotel", "hotel_id"),
+    )
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ATTIVITÀ OPERATIVE
@@ -180,7 +234,10 @@ class CostCenter(Base, UUIDMixin, TimestampMixin):
 class Activity(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "activities"
 
-    code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
+    code: Mapped[str] = mapped_column(String(20), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
     department: Mapped[Department] = mapped_column(SAEnum(Department), nullable=False)
@@ -217,8 +274,9 @@ class Activity(Base, UUIDMixin, TimestampMixin):
     )
 
     __table_args__ = (
+        UniqueConstraint("hotel_id", "code", name="uq_activities_hotel_code"),
         Index("ix_activities_department", "department"),
-        Index("ix_activities_code", "code"),
+        Index("ix_activities_hotel", "hotel_id"),
     )
 
 
@@ -229,7 +287,10 @@ class Activity(Base, UUIDMixin, TimestampMixin):
 class Service(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "services"
 
-    code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
+    code: Mapped[str] = mapped_column(String(20), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     service_type: Mapped[ServiceType] = mapped_column(
         SAEnum(ServiceType), nullable=False
@@ -256,18 +317,29 @@ class Service(Base, UUIDMixin, TimestampMixin):
 class CostDriver(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "cost_drivers"
 
-    name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
-    code: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    code: Mapped[str] = mapped_column(String(30), nullable=False)
     driver_type: Mapped[DriverType] = mapped_column(SAEnum(DriverType), nullable=False)
     unit: Mapped[str] = mapped_column(String(50), nullable=False)  # ore, mq, n°, %
     description: Mapped[Optional[str]] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    __table_args__ = (
+        UniqueConstraint("hotel_id", "code", name="uq_drivers_hotel_code"),
+        Index("ix_drivers_hotel", "hotel_id"),
+    )
 
 
 class DriverValue(Base, UUIDMixin, TimestampMixin):
     """Valori effettivi dei driver per periodo."""
     __tablename__ = "driver_values"
 
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
     driver_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("cost_drivers.id"), nullable=False
     )
@@ -285,9 +357,10 @@ class DriverValue(Base, UUIDMixin, TimestampMixin):
 
     __table_args__ = (
         UniqueConstraint(
-            "driver_id", "period_id", "entity_type", "entity_id",
+            "hotel_id", "driver_id", "period_id", "entity_type", "entity_id",
             name="uq_driver_values_key"
         ),
+        Index("ix_driver_values_hotel", "hotel_id"),
     )
 
 
@@ -298,6 +371,9 @@ class DriverValue(Base, UUIDMixin, TimestampMixin):
 class CostItem(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "cost_items"
 
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
     period_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("accounting_periods.id"), nullable=False
     )
@@ -319,6 +395,7 @@ class CostItem(Base, UUIDMixin, TimestampMixin):
     cost_center: Mapped[Optional["CostCenter"]] = relationship(back_populates="cost_items")
 
     __table_args__ = (
+        Index("ix_cost_items_hotel", "hotel_id"),
         Index("ix_cost_items_period", "period_id"),
         Index("ix_cost_items_cost_center", "cost_center_id"),
         Index("ix_cost_items_cost_type", "cost_type"),
@@ -333,7 +410,10 @@ class CostItem(Base, UUIDMixin, TimestampMixin):
 class Employee(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "employees"
 
-    employee_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
+    employee_code: Mapped[str] = mapped_column(String(50), nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(100), nullable=False)  # es. "Receptionist"
     department: Mapped[Department] = mapped_column(SAEnum(Department), nullable=False)
@@ -351,11 +431,19 @@ class Employee(Base, UUIDMixin, TimestampMixin):
         back_populates="employee"
     )
 
+    __table_args__ = (
+        UniqueConstraint("hotel_id", "employee_code", name="uq_employees_hotel_code"),
+        Index("ix_employees_hotel", "hotel_id"),
+    )
+
 
 class LaborAllocation(Base, UUIDMixin, TimestampMixin):
     """Ore e costi del personale allocati alle attività."""
     __tablename__ = "labor_allocations"
 
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
     period_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("accounting_periods.id"), nullable=False
     )
@@ -379,6 +467,7 @@ class LaborAllocation(Base, UUIDMixin, TimestampMixin):
     activity: Mapped["Activity"] = relationship(back_populates="labor_allocations")
 
     __table_args__ = (
+        Index("ix_labor_allocations_hotel", "hotel_id"),
         Index("ix_labor_allocations_period", "period_id"),
         CheckConstraint("hours > 0", name="ck_labor_hours_positive"),
         CheckConstraint(
@@ -402,6 +491,9 @@ class AllocationRule(Base, UUIDMixin, TimestampMixin):
     """
     __tablename__ = "allocation_rules"
 
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     level: Mapped[AllocationLevel] = mapped_column(
         SAEnum(AllocationLevel), nullable=False
@@ -421,6 +513,11 @@ class AllocationRule(Base, UUIDMixin, TimestampMixin):
     )
     target_service_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("services.id"), nullable=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("hotel_id", "code", name="uq_services_hotel_code"),
+        Index("ix_services_hotel", "hotel_id"),
     )
 
     # Driver
@@ -466,6 +563,9 @@ class ABCResult(Base, UUIDMixin, TimestampMixin):
     """Risultati del calcolo ABC per periodo/servizio/attività."""
     __tablename__ = "abc_results"
 
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
     period_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("accounting_periods.id"), nullable=False
     )
@@ -507,9 +607,10 @@ class ABCResult(Base, UUIDMixin, TimestampMixin):
     service: Mapped["Service"] = relationship(back_populates="abc_results")
 
     __table_args__ = (
+        Index("ix_abc_results_hotel", "hotel_id"),
         Index("ix_abc_results_period_service", "period_id", "service_id"),
         UniqueConstraint(
-            "period_id", "service_id", "activity_id", "calculation_version",
+            "hotel_id", "period_id", "service_id", "activity_id", "calculation_version",
             name="uq_abc_results_key"
         ),
     )
@@ -522,6 +623,9 @@ class ABCResult(Base, UUIDMixin, TimestampMixin):
 class ServiceRevenue(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "service_revenues"
 
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
     period_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("accounting_periods.id"), nullable=False
     )
@@ -534,5 +638,53 @@ class ServiceRevenue(Base, UUIDMixin, TimestampMixin):
     notes: Mapped[Optional[str]] = mapped_column(Text)
 
     __table_args__ = (
-        UniqueConstraint("period_id", "service_id", name="uq_service_revenues_key"),
+        UniqueConstraint("hotel_id", "period_id", "service_id", name="uq_service_revenues_key"),
+        Index("ix_service_revenues_hotel", "hotel_id"),
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INTEGRAZIONI E MAPPING
+# ─────────────────────────────────────────────────────────────────────────────
+
+class DataImportLog(Base, UUIDMixin, TimestampMixin):
+    """Log delle importazioni dati da sistemi esterni."""
+    __tablename__ = "data_import_logs"
+
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
+    import_type: Mapped[str] = mapped_column(String(50))  # accounting, payroll, pms
+    source_system: Mapped[str] = mapped_column(String(100))
+    filename: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(20))  # success, error, partial
+    rows_read: Mapped[int] = mapped_column(Integer, default=0)
+    rows_imported: Mapped[int] = mapped_column(Integer, default=0)
+    errors: Mapped[Optional[str]] = mapped_column(Text)
+    batch_id: Mapped[str] = mapped_column(String(100), unique=True)
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+
+
+class MappingRule(Base, UUIDMixin, TimestampMixin):
+    """Regole per mappare codici esterni (PMS/ERP) verso entità ABC."""
+    __tablename__ = "mapping_rules"
+
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
+    mapping_type: Mapped[MappingType] = mapped_column(SAEnum(MappingType), nullable=False)
+    external_code: Mapped[str] = mapped_column(String(100), nullable=False)
+    external_description: Mapped[Optional[str]] = mapped_column(String(255))
+    
+    # Riferimento interno (uno solo di questi sarà popolato in base a mapping_type)
+    target_cost_center_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("cost_centers.id"))
+    target_activity_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("activities.id"))
+    target_service_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("services.id"))
+    
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    confidence_score: Mapped[Optional[float]] = mapped_column(Numeric(3, 2))  # per suggerimenti AI
+
+    __table_args__ = (
+        UniqueConstraint("hotel_id", "mapping_type", "external_code", name="uq_mapping_rules_key"),
+        Index("ix_mapping_rules_hotel", "hotel_id"),
     )
