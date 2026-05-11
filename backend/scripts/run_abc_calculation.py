@@ -58,7 +58,7 @@ async def run_calc():
         )
 
         print("Salvataggio risultati...")
-        await _save_abc_results(db, period.id, abc_result, service_map)
+        await _save_abc_results(db, period.id, period.hotel_id, abc_result, service_map)
         print("Fatto.")
 
 if __name__ == "__main__":

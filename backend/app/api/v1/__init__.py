@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     imports,
     simulation,
     ai,
+    mapping,
 )
 
 router = APIRouter()
@@ -26,5 +27,6 @@ router.include_router(employees.router, prefix="/employees", tags=["personale"])
 router.include_router(allocations.router, prefix="/allocations", tags=["allocazioni"])
 router.include_router(reports.router, prefix="/reports", tags=["report ABC"])
 router.include_router(imports.router, prefix="/imports", tags=["import dati"])
+router.include_router(mapping.router, prefix="/mapping", tags=["mapping"])
 router.include_router(simulation.router, prefix="/simulation", tags=["simulazioni"])
 router.include_router(ai.router, prefix="/ai", tags=["intelligenza artificiale"])

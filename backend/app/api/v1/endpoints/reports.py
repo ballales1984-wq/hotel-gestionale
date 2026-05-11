@@ -224,7 +224,7 @@ async def calculate_abc(
     # ── Salva risultati in background ────────────────────────────────────────
     if save_results:
         background_tasks.add_task(
-            _save_abc_results, db, period_id, abc_result, service_map
+            _save_abc_results, db, period_id, period.hotel_id, abc_result, service_map
         )
 
     # ── Costruisci risposta ──────────────────────────────────────────────────
@@ -400,7 +400,7 @@ async def get_kpi_summary(
 # BACKGROUND TASKS
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def _save_abc_results(db, period_id, abc_result, service_map):
+async def _save_abc_results(db, period_id, hotel_id, abc_result, service_map):
     """Salva i risultati ABC nel DB (eseguito in background)."""
     from sqlalchemy import delete
     try:
@@ -418,6 +418,7 @@ async def _save_abc_results(db, period_id, abc_result, service_map):
             cost_per_unit = svc_result.cost_per_unit
 
             db_result = ABCResult(
+                hotel_id=hotel_id,
                 period_id=period_id,
                 service_id=svc_id,
                 activity_id=None,  # risultato aggregato

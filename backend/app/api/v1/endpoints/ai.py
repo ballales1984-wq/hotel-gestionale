@@ -175,10 +175,12 @@ async def get_forecast(
         if df.empty or len(df) < 5:
             logger.warning(f"Dati reali insufficienti per forecast {metric}, uso mock data")
             df_mock = _get_mock_data_for_forecast()
+            # Usa la metrica richiesta se disponibile nel mock, altrimenti 'notti_vendute'
+            metric_col = metric if metric in df_mock.columns else 'notti_vendute'
             results = forecast_engine.forecast_metric(
                 df=df_mock,
                 date_col='ds',
-                metric_col='notti_vendute',
+                metric_col=metric_col,
                 periods=periods,
                 freq='M'
             )

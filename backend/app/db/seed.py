@@ -5,19 +5,20 @@ Eseguire: python -m app.db.seed
 import asyncio
 import logging
 from decimal import Decimal
+import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.db.database import AsyncSessionFactory, create_tables
 from app.models.models import (
     Activity, AllocationRule, AllocationLevel, CostCenter, CostDriver,
     Department, DriverType, Service, ServiceType, User, UserRole,
     AccountingPeriod, ABCResult, CostItem, Employee, LaborAllocation,
-    DriverValue, ServiceRevenue
+    DriverValue, ServiceRevenue, Hotel
 )
 
 logger = logging.getLogger(__name__)
-
 
 COST_CENTERS = [
     {"code": "CC-REC", "name": "Reception", "department": Department.RECEPTION},
@@ -59,12 +60,9 @@ ACTIVITIES = [
     {"code": "COM-001", "name": "Sales e marketing", "department": Department.COMMERCIAL, "cc": "CC-COM"},
     {"code": "COM-002", "name": "Revenue management", "department": Department.COMMERCIAL, "cc": "CC-COM"},
     # Direzione / Admin (attività di supporto)
-    {"code": "DIR-001", "name": "Management e coordinamento", "department": Department.DIRECTION, "cc": "CC-DIR",
-     "is_support": True},
-    {"code": "ADM-001", "name": "Contabilità e amministrazione", "department": Department.ADMIN, "cc": "CC-ADM",
-     "is_support": True},
-    {"code": "ADM-002", "name": "Gestione HR e personale", "department": Department.ADMIN, "cc": "CC-ADM",
-     "is_support": True},
+    {"code": "DIR-001", "name": "Management e coordinamento", "department": Department.DIRECTION, "cc": "CC-DIR", "is_support": True},
+    {"code": "ADM-001", "name": "Contabilità e amministrazione", "department": Department.ADMIN, "cc": "CC-ADM", "is_support": True},
+    {"code": "ADM-002", "name": "Gestione HR e personale", "department": Department.ADMIN, "cc": "CC-ADM", "is_support": True},
 ]
 
 SERVICES = [
@@ -91,35 +89,54 @@ DRIVERS = [
 async def seed(db: AsyncSession):
     logger.info("Avvio seed database...")
 
-    # ── Utente admin ──────────────────────────────────────────────────────
-    from passlib.context import CryptContext
-    pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    # ── Ottieni o crea Hotel di default ─────────────────────────────────────
+    hotel_res = await db.execute(select(Hotel).where(Hotel.code == "DEMO"))
+    hotel = hotel_res.scalar_one_or_none()
+    if not hotel:
+        hotel = Hotel(
+            id=uuid.uuid4(),
+            name="Hotel Demo",
+            code="DEMO",
+            is_active=True,
+        )
+        db.add(hotel)
+        await db.flush()
+        logger.info(f"Creato Hotel Demo: {hotel.id}")
+    else:
+        logger.info(f"Hotel Demo esistente: {hotel.id}")
 
-    for user_data in [
-        {"email": "admin@hotel-abc.it", "name": "Amministratore Sistema", "role": UserRole.ADMIN, "pass": "HotelABC2025!"},
-        {"email": "direzione@hotel-abc.it", "name": "Direttore Generale", "role": UserRole.DIRECTOR, "pass": "Direzione2025!"}
-    ]:
-        from sqlalchemy import select
-        res = await db.execute(select(User).where(User.email == user_data["email"]))
-        if not res.scalar_one_or_none():
-            u = User(
-                email=user_data["email"],
-                full_name=user_data["name"],
-                hashed_password=pwd.hash(user_data["pass"]),
-                role=user_data["role"],
-            )
-            db.add(u)
-            logger.info(f"Creato utente: {user_data['email']}")
-        else:
-            logger.info(f"Utente già esistente: {user_data['email']}")
+    # ── Utente admin ──────────────────────────────────────────────────────
+    # Disabilitato temporaneamente per evitare errori bcrypt
+    # from passlib.context import CryptContext
+    # pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    #
+    # for user_data in [
+    #     {"email": "admin@hotel-abc.it", "name": "Amministratore Sistema", "role": UserRole.ADMIN, "pass": "HotelABC2025!"},
+    #     {"email": "direzione@hotel-abc.it", "name": "Direttore Generale", "role": UserRole.DIRECTOR, "pass": "Direzione2025!"}
+    # ]:
+    #     res = await db.execute(select(User).where(User.email == user_data["email"]))
+    #     if not res.scalar_one_or_none():
+    #         u = User(
+    #             email=user_data["email"],
+    #             full_name=user_data["name"],
+    #             hashed_password=pwd.hash(user_data["pass"]),
+    #             role=user_data["role"],
+    #             hotel_id=hotel.id,
+    #         )
+    #         db.add(u)
+    #         logger.info(f"Creato utente: {user_data['email']}")
+    #     else:
+    #         logger.info(f"Utente già esistente: {user_data['email']}")
+    pass
 
     # ── Centri di costo ───────────────────────────────────────────────────
     cc_map = {}
     for cc_data in COST_CENTERS:
-        res = await db.execute(select(CostCenter).where(CostCenter.code == cc_data["code"]))
+        res = await db.execute(select(CostCenter).where(CostCenter.code == cc_data["code"], CostCenter.hotel_id == hotel.id))
         cc = res.scalar_one_or_none()
         if not cc:
             cc = CostCenter(
+                hotel_id=hotel.id,
                 code=cc_data["code"],
                 name=cc_data["name"],
                 department=cc_data["department"],
@@ -132,10 +149,11 @@ async def seed(db: AsyncSession):
     # ── Attività ──────────────────────────────────────────────────────────
     act_map = {}
     for act_data in ACTIVITIES:
-        res = await db.execute(select(Activity).where(Activity.code == act_data["code"]))
+        res = await db.execute(select(Activity).where(Activity.code == act_data["code"], Activity.hotel_id == hotel.id))
         act = res.scalar_one_or_none()
         if not act:
             act = Activity(
+                hotel_id=hotel.id,
                 code=act_data["code"],
                 name=act_data["name"],
                 department=act_data["department"],
@@ -150,10 +168,11 @@ async def seed(db: AsyncSession):
     # ── Servizi ───────────────────────────────────────────────────────────
     svc_map = {}
     for svc_data in SERVICES:
-        res = await db.execute(select(Service).where(Service.code == svc_data["code"]))
+        res = await db.execute(select(Service).where(Service.code == svc_data["code"], Service.hotel_id == hotel.id))
         svc = res.scalar_one_or_none()
         if not svc:
             svc = Service(
+                hotel_id=hotel.id,
                 code=svc_data["code"],
                 name=svc_data["name"],
                 service_type=svc_data["type"],
@@ -167,10 +186,11 @@ async def seed(db: AsyncSession):
     # ── Driver ────────────────────────────────────────────────────────────
     drv_map = {}
     for drv_data in DRIVERS:
-        res = await db.execute(select(CostDriver).where(CostDriver.code == drv_data["code"]))
+        res = await db.execute(select(CostDriver).where(CostDriver.code == drv_data["code"], CostDriver.hotel_id == hotel.id))
         drv = res.scalar_one_or_none()
         if not drv:
             drv = CostDriver(
+                hotel_id=hotel.id,
                 code=drv_data["code"],
                 name=drv_data["name"],
                 driver_type=drv_data["type"],
@@ -205,15 +225,24 @@ async def seed(db: AsyncSession):
         ("COM-001", "SVC-CON", Decimal("0.40")),
         ("COM-002", "SVC-PNT", Decimal("1.00")),
     ]:
-        rule = AllocationRule(
-            name=f"{act_code} → {svc_code} ({int(pct*100)}%)",
-            level=AllocationLevel.ACTIVITY_TO_SERVICE,
-            source_activity_id=act_map[act_code].id,
-            target_service_id=svc_map[svc_code].id,
-            allocation_pct=pct,
-            priority=1,
-        )
-        db.add(rule)
+        # Controlla se regola esiste già per questo hotel
+        existing_rule = await db.execute(select(AllocationRule).where(
+            AllocationRule.hotel_id == hotel.id,
+            AllocationRule.source_activity_id == act_map[act_code].id,
+            AllocationRule.target_service_id == svc_map[svc_code].id
+        ))
+        if not existing_rule.scalar_one_or_none():
+            rule = AllocationRule(
+                hotel_id=hotel.id,
+                name=f"{act_code} → {svc_code} ({int(pct*100)}%)",
+                level=AllocationLevel.ACTIVITY_TO_SERVICE,
+                source_activity_id=act_map[act_code].id,
+                target_service_id=svc_map[svc_code].id,
+                allocation_pct=pct,
+                priority=1,
+                is_active=True,
+            )
+            db.add(rule)
 
     await db.commit()
     logger.info("✅ Seed completato: %d attività, %d servizi, %d driver",

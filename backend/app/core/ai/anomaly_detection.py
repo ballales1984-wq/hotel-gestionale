@@ -49,6 +49,16 @@ class AnomalyDetector:
         # Preparazione dati
         X_raw = df[feature_cols].fillna(0)
         
+        # Protezione: verifica che non ci siano righe o colonne tutte zero
+        if X_raw.shape[0] == 0:
+            logger.warning("Nessun dato valido dopo fillna")
+            return []
+        
+        # Verifica se tutte le colonne hanno varianza zero (stessi valori)
+        if (X_raw.std() == 0).all():
+            logger.warning("Tutte le features hanno varianza zero, skipping anomaly detection")
+            return []
+        
         # Scaling è importante per l'Isolation Forest
         X_scaled = self.scaler.fit_transform(X_raw)
         

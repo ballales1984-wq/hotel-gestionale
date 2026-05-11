@@ -385,7 +385,20 @@ class ABCEngine:
                     result.activity_costs[target_id].inbound_allocated += allocated
 
                 # Azzera l'attività di supporto dopo il ribaltamento
-                support_activity.inbound_allocated -= cost_to_distribute
+                # Prima verifica che inbound_allocated abbia abbastanza da azzerare
+                total_support_cost = support_activity.total_cost
+                if support_activity.inbound_allocated >= total_support_cost:
+                    support_activity.inbound_allocated -= total_support_cost
+                else:
+                    # Se non c'è abbastanza, azzera completamente e logga warning
+                    logger.warning(
+                        "Support activity %s has insufficient inbound_allocated (%.2f < %.2f), forcing zero",
+                        support_id, support_activity.inbound_allocated, total_support_cost
+                    )
+                    support_activity.direct_cost = Decimal("0")
+                    support_activity.labor_cost = Decimal("0")
+                    support_activity.overhead_cost = Decimal("0")
+                    support_activity.inbound_allocated = Decimal("0")
 
             # Verifica convergenza
             max_delta = max(
@@ -458,14 +471,15 @@ class ABCEngine:
                         Decimal("0.01"), rounding=ROUND_HALF_UP
                     )
                     direct_share = allocated - labor_share - overhead_share
-                else:
-                    # Se il costo totale dell'attività è zero, distribuisce equamente
-                    labor_share = allocated
-                    overhead_share = Decimal("0")
-                    direct_share = Decimal("0")
+                    # Aggiorna i costi del servizio
                     svc.labor_cost += labor_share
                     svc.overhead_cost += overhead_share
                     svc.direct_cost += direct_share
+                else:
+                    # Se il costo totale dell'attività è zero, distribuisce equamente
+                    svc.labor_cost += allocated
+                    svc.overhead_cost += Decimal("0")
+                    svc.direct_cost += Decimal("0")
 
     # ──────────────────────────────────────────────────────────────────────
     # FASE 4: Ricavi e margini

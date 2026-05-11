@@ -187,7 +187,7 @@ async def generate_driver_values(db: AsyncSession, periods):
         dv1 = DriverValue(
             period_id=period.id,
             driver_id=drivers["DRV-ORE"].id,
-            entity_type='period',
+            entity_type='period',  # entity_type per DRV-ORE a livello di periodo
             entity_id=period.id,
             value=total_labor_hours,
         )
