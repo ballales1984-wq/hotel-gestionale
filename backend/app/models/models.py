@@ -480,6 +480,37 @@ class LaborAllocation(Base, UUIDMixin, TimestampMixin):
             name="ck_labor_pct_range"
         ),
     )
+    period_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounting_periods.id"), nullable=False
+    )
+    employee_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("employees.id"), nullable=False
+    )
+    activity_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("activities.id"), nullable=False
+    )
+    hours: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
+    hourly_cost: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    allocation_pct: Mapped[Decimal] = mapped_column(
+        Numeric(6, 4), nullable=False
+    )  # % delle ore su quell'attività
+    source: Mapped[str] = mapped_column(
+        String(50), default="estimate"
+    )  # estimate | timesheet | import
+
+    period: Mapped["AccountingPeriod"] = relationship(back_populates="labor_allocations")
+    employee: Mapped["Employee"] = relationship(back_populates="labor_allocations")
+    activity: Mapped["Activity"] = relationship(back_populates="labor_allocations")
+
+    __table_args__ = (
+        Index("ix_labor_allocations_hotel", "hotel_id"),
+        Index("ix_labor_allocations_period", "period_id"),
+        CheckConstraint("hours > 0", name="ck_labor_hours_positive"),
+        CheckConstraint(
+            "allocation_pct > 0 AND allocation_pct <= 1",
+            name="ck_labor_pct_range"
+        ),
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

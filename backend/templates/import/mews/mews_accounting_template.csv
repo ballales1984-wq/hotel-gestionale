@@ -1,0 +1,32 @@
+conto,descrizione,centro_di_costo,tipo_costo,importo
+4000,Ricavo Alloggio,RECEPTION,diretto,15000.00
+4010,Ricavo Prima Colazione,FOOD_BEVERAGE,diretto,3000.00
+4020,Ricavo Ristorante,FOOD_BEVERAGE,diretto,8000.00
+4030,Ricavo Bar,FOOD_BEVERAGE,diretto,2000.00
+4040,Ricavo Spa & Wellness,SPA,diretto,1500.00
+4050,Ricavo Parcheggio,MAINTENANCE,diretto,500.00
+4060,Ricavo Sale Riunioni,CONGRESSI,diretto,1000.00
+4070,Ricavo Servizi Vari,ALTRO,diretto,500.00
+6000,Costo Materie Prime Ristorante,FOOD_BEVERAGE,diretto,-3500.00
+6005,Costo Materie Prime Bar,FOOD_BEVERAGE,diretto,-800.00
+6010,Costo Energia Elettrica,MAINTENANCE,utilities,-1200.00
+6015,Costo Gas Riscaldamento,MAINTENANCE,utilities,-300.00
+6020,Costo Acqua Sanitaria,MAINTENANCE,utilities,-150.00
+6025,Costo Manutenzione Preventiva,MAINTENANCE,struttura,-800.00
+6030,Costo Servizi di Pulizia,HOUSEKEEPING,struttura,-1000.00
+6035,Costo Lavanderia e Stireria,HOUSEKEEPING,struttura,-400.00
+6040,Costo Stipendi Reception,RECEPTION,personale,-2500.00
+6045,Costo Stipendi Housekeeping,HOUSEKEEPING,personale,-1800.00
+6050,Costo Stipendi Ristorante,FOOD_BEVERAGE,personale,-2200.00
+6055,Costo Stipendi Bar,FOOD_BEVERAGE,personale,-600.00
+6060,Costo Stipendi Amministrazione,AMMINISTRAZIONE,personale,-1500.00
+6065,Costo Stipendi Direzione,DIREZIONE,personale,-2000.00
+6070,Costo Oneri Previdenziali,AMMINISTRAZIONE,personale,-800.00
+6075,Costo Assicurazione Struttura,AMMINISTRAZIONE,struttura,-300.00
+6080,Costo Ammortamento Immobili,AMMINISTRAZIONE,ammortamento,-1000.00
+6085,Costo Ammortamento Arredi,AMMINISTRAZIONE,ammortamento,-500.00
+6090,Costo Marketing Digitale,COMMERCIALE,struttura,-700.00
+6095,Costo Consulenze Legali,AMMINISTRAZIONE,struttura,-400.00
+6100,Costo Telecomunicazioni,AMMINISTRAZIONE,utilities,-100.00
+6105,Costo Commissioni Bancarie,AMMINISTRAZIONE,struttura,-150.00
+6110,Costo Spese Ufficio Vari,AMMINISTRAZIONE,struttura,-200.00

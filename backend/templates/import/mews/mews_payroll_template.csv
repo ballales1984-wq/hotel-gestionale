@@ -1,0 +1,11 @@
+employee_id,employee_name,activity_code,hours,hourly_rate,allocation_percentage
+E001,John Doe,FRONT_DESK_CHECKIN,8,25.00,100
+E002,Jane Smith,FRONT_DESK_CHECKOUT,8,25.00,100
+E003,Bob Johnson,HOUSEKEEPING_ROOM,7,22.00,100
+E004,Alice Williams,HOUSEKEEPING_PUBLIC,6,22.00,100
+E005,Charlie Brown,FOOD_BREAKFAST,5,20.00,100
+E006,Lucy Davis,FOOD_LUNCH,6,20.00,100
+E007,Lin van Pelt,FOOD_DINNER,6,20.00,100
+E008,Pig-Pen, BAR_SERVICE,5,20.00,100
+E009,Sally,Spa Therapist,6,28.00,100
+E010,Schroeder,Maintenance Technician,7,24.00,100

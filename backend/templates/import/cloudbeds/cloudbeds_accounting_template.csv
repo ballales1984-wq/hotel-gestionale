@@ -1,0 +1,32 @@
+account,description,cost_center,cost_type,amount
+4000,Room Revenue - Accommodation,ROOMS,direct,15000.00
+4010,Breakfast Revenue,FOOD_BEVERAGE,direct,3000.00
+4020,Restaurant Revenue,FOOD_BEVERAGE,direct,8000.00
+4030,Bar Revenue,FOOD_BEVERAGE,direct,2000.00
+4040,Spa Revenue,SPA,direct,1500.00
+4050,Parking Revenue,MAINTENANCE,direct,500.00
+4060,Conference Revenue,CONFERENCE,direct,1000.00
+4070,Other Revenue,OTHER,direct,500.00
+6000,Food Cost - Restaurant,FOOD_BEVERAGE,direct,-3500.00
+6005,Bar Consumables,FOOD_BEVERAGE,direct,-800.00
+6010,Electricity,MAINTENANCE,utilities,-1200.00
+6015,Gas,MAINTENANCE,utilities,-300.00
+6020,Water,MAINTENANCE,utilities,-150.00
+6025,Maintenance - Preventive,MAINTENANCE,structure,-800.00
+6030,Cleaning Services,HOUSEKEEPING,structure,-1000.00
+6035,Laundry,HOUSEKEEPING,structure,-400.00
+6040,Front Desk Salaries,FRONT_DESK,personnel,-2500.00
+6045,Housekeeping Salaries,HOUSEKEEPING,personnel,-1800.00
+6050,Restaurant Salaries,FOOD_SERVICE,personnel,-2200.00
+6055,Bar Salaries,FOOD_BEVERAGE,personnel,-600.00
+6060,Admin Salaries,ADMINISTRATION,personnel,-1500.00
+6065,Management Salaries,MANAGEMENT,personnel,-2000.00
+6070,Payroll Taxes,ADMINISTRATION,personnel,-800.00
+6075,Property Insurance,ADMINISTRATION,structure,-300.00
+6080,Building Depreciation,ADMINISTRATION,depreciation,-1000.00
+6085,Equipment Depreciation,ADMINISTRATION,depreciation,-500.00
+6090,Digital Marketing,SALES_MARKETING,structure,-700.00
+6095,Professional Fees,ADMINISTRATION,structure,-400.00
+6100,Telecommunications,ADMINISTRATION,utilities,-100.00
+6105,Bank Fees,ADMINISTRATION,structure,-150.00
+6110,Office Supplies,ADMINISTRATION,structure,-200.00

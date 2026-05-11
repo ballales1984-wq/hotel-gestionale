@@ -100,42 +100,43 @@ async def import_accounting(
     # Mappa centri di costo
     cc_map = await _load_cost_center_map(db)
 
-    for i, row in enumerate(df.iter_rows(named=True)):
-        try:
-            amount = Decimal(str(row.get("importo", 0) or 0))
-            if amount == 0:
-                warnings.append(f"Riga {i+2}: importo zero, saltata")
-                skipped += 1
-                continue
+        for i, row in enumerate(df.iter_rows(named=True)):
+            try:
+                amount = Decimal(str(row.get("importo", 0) or 0))
+                if amount == 0:
+                    warnings.append(f"Riga {i+2}: importo zero, saltata")
+                    skipped += 1
+                    continue
 
-            cc_id = None
-            cc_raw = str(row.get("centro_di_costo", "") or "").strip()
-            if cc_raw and cc_raw in cc_map:
-                cc_id = cc_map[cc_raw]
-            elif cc_raw:
-                warnings.append(
-                    f"Riga {i+2}: centro di costo '{cc_raw}' non trovato"
+                cc_id = None
+                cc_raw = str(row.get("centro_di_costo", "") or "").strip()
+                if cc_raw and cc_raw in cc_map:
+                    cc_id = cc_map[cc_raw]
+                elif cc_raw:
+                    warnings.append(
+                        f"Riga {i+2}: centro di costo '{cc_raw}' non trovato"
+                    )
+
+                cost_type_raw = str(row.get("tipo_costo", "") or "").lower().strip()
+                cost_type = _map_cost_type(cost_type_raw)
+
+                cost_item = CostItem(
+                    period_id=period_id,
+                    hotel_id=period.hotel_id,
+                    cost_center_id=cc_id,
+                    account_code=str(row.get("conto", "") or "")[:50] or None,
+                    account_name=str(row.get("descrizione", "") or "")[:200] or None,
+                    cost_type=cost_type,
+                    amount=amount,
+                    source_system="import_csv",
+                    import_batch_id=batch_id,
                 )
+                db.add(cost_item)
+                imported += 1
 
-            cost_type_raw = str(row.get("tipo_costo", "") or "").lower().strip()
-            cost_type = _map_cost_type(cost_type_raw)
-
-            cost_item = CostItem(
-                period_id=period_id,
-                cost_center_id=cc_id,
-                account_code=str(row.get("conto", "") or "")[:50] or None,
-                account_name=str(row.get("descrizione", "") or "")[:200] or None,
-                cost_type=cost_type,
-                amount=amount,
-                source_system="import_csv",
-                import_batch_id=batch_id,
-            )
-            db.add(cost_item)
-            imported += 1
-
-        except Exception as e:
-            errors.append(f"Riga {i+2}: {e}")
-            skipped += 1
+            except Exception as e:
+                errors.append(f"Riga {i+2}: {e}")
+                skipped += 1
 
     await db.commit()
     logger.info("Import contabilità: %d righe importate, %d saltate", imported, skipped)
@@ -246,6 +247,7 @@ async def import_payroll(
 
             labor = LaborAllocation(
                 period_id=period_id,
+                hotel_id=period.hotel_id,
                 employee_id=emp.id,
                 activity_id=act.id,
                 hours=ore,
@@ -339,6 +341,7 @@ async def import_revenues(
 
             rev = ServiceRevenue(
                 period_id=period_id,
+                hotel_id=period.hotel_id,
                 service_id=svc.id,
                 revenue=revenue,
                 output_volume=Decimal(str(volume)) if volume else None,
