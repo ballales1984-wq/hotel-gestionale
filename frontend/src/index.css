@@ -578,7 +578,6 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
   color: #34d399;
 }
 
-/* ── Loading spinner ── */
 .spinner {
   width: 36px;
   height: 36px;
@@ -599,13 +598,11 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
   gap: 16px;
 }
 
-/* ── Fade in animation ── */
+.fade-in { animation: fadeIn var(--transition-base) ease; }
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
-.fade-in { animation: fadeIn var(--transition-base) ease; }
 
 /* ── Number formatting ── */
 .currency {

@@ -438,3 +438,89 @@ async def _save_abc_results(db, period_id, abc_result, service_map):
     except Exception as e:
         logger.exception("Errore nel salvataggio risultati ABC: %s", e)
         await db.rollback()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EXPORT EXCEL
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get(
+    "/export/{period_id}",
+    summary="Esporta risultati ABC in Excel",
+)
+async def export_abc_to_excel(
+    period_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Genera un file Excel con i risultati del calcolo ABC."""
+    import io
+    import pandas as pd
+    from datetime import datetime
+    from fastapi.responses import StreamingResponse
+
+    period = await db.get(AccountingPeriod, period_id)
+    if not period:
+        raise HTTPException(status_code=404, detail="Periodo non trovato")
+
+    # 1. Carica Risultati Aggregati (Servizi)
+    query_svc = (
+        select(ABCResult, Service)
+        .join(Service, ABCResult.service_id == Service.id)
+        .where(ABCResult.period_id == period_id)
+        .where(ABCResult.activity_id == None)
+    )
+    res_svc = await db.execute(query_svc)
+    svc_data = []
+    for r, s in res_svc.all():
+        svc_data.append({
+            "Servizio": s.name,
+            "Tipo": s.service_type.value,
+            "Ricavo": float(r.revenue),
+            "Costo Totale": float(r.total_cost),
+            "Costo Personale": float(r.labor_cost),
+            "Costo Diretto": float(r.direct_cost),
+            "Overhead": float(r.overhead_cost),
+            "Margine Lordo": float(r.gross_margin),
+            "Margine %": float(r.margin_pct) if r.margin_pct else 0,
+            "Volume": float(r.output_volume) if r.output_volume else 0,
+            "Costo Unitario": float(r.cost_per_unit) if r.cost_per_unit else 0,
+        })
+
+    # 2. Carica Dettaglio Attività
+    from app.models.models import Activity
+    query_act = (
+        select(ABCResult, Service, Activity)
+        .join(Service, ABCResult.service_id == Service.id)
+        .join(Activity, ABCResult.activity_id == Activity.id)
+        .where(ABCResult.period_id == period_id)
+    )
+    res_act = await db.execute(query_act)
+    act_data = []
+    for r, s, a in res_act.all():
+        act_data.append({
+            "Servizio": s.name,
+            "Attività": a.name,
+            "Reparto": a.department.value,
+            "Costo Allocato": float(r.total_cost),
+            "di cui Personale": float(r.labor_cost),
+        })
+
+    # Crea Excel in memoria
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        if svc_data:
+            pd.DataFrame(svc_data).to_excel(writer, sheet_name="Sintesi Servizi", index=False)
+        if act_data:
+            pd.DataFrame(act_data).to_excel(writer, sheet_name="Dettaglio Attività", index=False)
+        
+        # Aggiungi Info Periodo
+        pd.DataFrame([{"Periodo": period.name, "Data Export": datetime.now()}]).to_excel(writer, sheet_name="Info", index=False)
+
+    output.seek(0)
+    filename = f"Report_ABC_{period.name.replace(' ', '_')}.xlsx"
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )

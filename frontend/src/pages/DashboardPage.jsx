@@ -134,7 +134,16 @@ export default function DashboardPage() {
             Periodo: <strong style={{ color: 'var(--text-secondary)' }}>{latestPeriod.name}</strong>
           </p>
         </div>
-        <span className="badge badge-info">Aggiornato</span>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <a 
+            href={reportsApi.export(latestPeriod.id)} 
+            className="btn btn-secondary btn-sm"
+            style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}
+          >
+            📥 Esporta Excel
+          </a>
+          <span className="badge badge-info">Aggiornato</span>
+        </div>
       </div>
 
       {/* KPI Cards */}

@@ -6,7 +6,8 @@ import logging
 from datetime import datetime
 from typing import Optional, Dict, List
 import pandas as pd
-from sqlalchemy import select, func, and_, case
+from sqlalchemy import select, func, and_
+from sqlalchemy.sql import case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.models import (

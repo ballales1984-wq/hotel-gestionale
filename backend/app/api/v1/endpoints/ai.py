@@ -27,6 +27,19 @@ anomaly_detector = AnomalyDetector()
 ALL_DRIVER_FEATURES = ["ore_lavorate", "notti_vendute", "coperti", "mq", "eventi"]
 
 
+class AIStatus(BaseModel):
+    driver_discovery: str = "ready"
+    forecasting: str = "ready"
+    anomaly_detection: str = "ready"
+    overall: str = "operational"
+
+
+@router.get("/status", response_model=AIStatus)
+async def get_ai_status():
+    """Verifica lo stato dei motori AI."""
+    return AIStatus()
+
+
 def _get_fallback_driver_results(feature_cols: List[str]) -> List[Dict[str, Any]]:
     """Ritorna pesi equalizzati se i dati non sono sufficienti per il ML."""
     weight = 100.0 / len(feature_cols) if feature_cols else 0

@@ -449,3 +449,82 @@ async def _load_cost_center_map(db: AsyncSession) -> dict[str, uuid.UUID]:
     from sqlalchemy import select
     q = await db.execute(select(CostCenter))
     return {cc.code: cc.id for cc in q.scalars().all()}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PRE-FLIGHT VALIDATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.post(
+    "/validate",
+    summary="Valida file prima dell'importazione",
+)
+async def validate_import_file(
+    import_type: str = Form(..., description="accounting | payroll | revenues"),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Analizza il file e restituisce errori/avvisi senza salvare nulla.
+    Utile per verificare se i codici (CDC, Attività) sono censiti nel sistema.
+    """
+    content = await file.read()
+    try:
+        df = _read_file(content, file.filename)
+    except Exception as e:
+        return {"valid": False, "errors": [f"Errore lettura file: {e}"], "warnings": []}
+
+    warnings = []
+    errors = []
+
+    if import_type == "accounting":
+        df = _normalize_columns(df, {
+            "centro_di_costo": ["centro_di_costo", "cdc", "cost_center", "reparto"],
+            "importo": ["importo", "amount", "valore"],
+        })
+        cc_map = await _load_cost_center_map(db)
+        for i, row in enumerate(df.iter_rows(named=True)):
+            cc_raw = str(row.get("centro_di_costo", "") or "").strip()
+            if cc_raw and cc_raw not in cc_map:
+                warnings.append(f"Riga {i+2}: Centro di costo '{cc_raw}' non censito. Verrà ignorato.")
+            if not row.get("importo"):
+                warnings.append(f"Riga {i+2}: Importo mancante o zero.")
+
+    elif import_type == "payroll":
+        df = _normalize_columns(df, {
+            "matricola": ["matricola", "id"],
+            "attivita": ["attivita", "attività", "activity"],
+        })
+        from sqlalchemy import select
+        from app.models.models import Activity
+        act_q = await db.execute(select(Activity))
+        act_map = {a.code for a in act_q.scalars().all()}
+        
+        for i, row in enumerate(df.iter_rows(named=True)):
+            act_code = str(row.get("attivita", "") or "").strip()
+            if act_code and act_code not in act_map:
+                errors.append(f"Riga {i+2}: Attività '{act_code}' non trovata a sistema. Errore critico.")
+            if not row.get("matricola"):
+                warnings.append(f"Riga {i+2}: Matricola dipendente mancante.")
+
+    elif import_type == "revenues":
+        df = _normalize_columns(df, {
+            "servizio": ["servizio", "service"],
+        })
+        from sqlalchemy import select
+        from app.models.models import Service
+        svc_q = await db.execute(select(Service))
+        svc_map = {s.code for s in svc_q.scalars().all()}
+        for i, row in enumerate(df.iter_rows(named=True)):
+            svc_code = str(row.get("servizio", "") or "").strip()
+            if svc_code and svc_code not in svc_map:
+                errors.append(f"Riga {i+2}: Servizio '{svc_code}' non censito.")
+
+    return {
+        "valid": len(errors) == 0,
+        "filename": file.filename,
+        "rows_count": len(df),
+        "errors": errors,
+        "warnings": warnings,
+        "summary": f"Analizzate {len(df)} righe. {len(errors)} errori, {len(warnings)} avvisi."
+    }

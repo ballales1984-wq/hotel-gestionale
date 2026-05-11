@@ -1,0 +1,98 @@
+Importing plotly failed. Interactive plots will not work.
+INFO:     Started server process [19260]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+(trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "D:\hotel gestionale\backend\venv\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+Errore in forecast per notti_vendute: Function.__init__() got an unexpected keyword argument 'else_'
+Traceback (most recent call last):
+  File "D:\hotel gestionale\backend\app\api\v1\endpoints\ai.py", line 158, in get_forecast
+    df = await fetcher.get_forecast_data(metric)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\hotel gestionale\backend\app\core\ai\data_fetcher.py", line 134, in get_forecast_data
+    func.case(
+  File "D:\hotel gestionale\backend\venv\Lib\site-packages\sqlalchemy\sql\functions.py", line 970, in __call__
+    return Function(
+           ^^^^^^^^^
+TypeError: Function.__init__() got an unexpected keyword argument 'else_'
+Dati reali insufficienti per driver discovery, uso mock data
+Dati reali insufficienti per anomaly detection, uso mock data
+Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] Connessione in corso interrotta forzatamente dall'host remoto
+Errore in forecast per notti_vendute: Function.__init__() got an unexpected keyword argument 'else_'
+Traceback (most recent call last):
+  File "D:\hotel gestionale\backend\app\api\v1\endpoints\ai.py", line 158, in get_forecast
+    df = await fetcher.get_forecast_data(metric)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\hotel gestionale\backend\app\core\ai\data_fetcher.py", line 134, in get_forecast_data
+    case(
+  File "D:\hotel gestionale\backend\venv\Lib\site-packages\sqlalchemy\sql\functions.py", line 970, in __call__
+    return Function(
+           ^^^^^^^^^
+TypeError: Function.__init__() got an unexpected keyword argument 'else_'
+Dati reali insufficienti per driver discovery, uso mock data
+Dati reali insufficienti per anomaly detection, uso mock data
+Errore in forecast per notti_vendute: Function.__init__() got an unexpected keyword argument 'else_'
+Traceback (most recent call last):
+  File "D:\hotel gestionale\backend\app\api\v1\endpoints\ai.py", line 158, in get_forecast
+    df = await fetcher.get_forecast_data(metric)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\hotel gestionale\backend\app\core\ai\data_fetcher.py", line 134, in get_forecast_data
+    case(
+  File "D:\hotel gestionale\backend\venv\Lib\site-packages\sqlalchemy\sql\functions.py", line 970, in __call__
+    return Function(
+           ^^^^^^^^^
+TypeError: Function.__init__() got an unexpected keyword argument 'else_'
+Dati reali insufficienti per driver discovery, uso mock data
+Dati reali insufficienti per anomaly detection, uso mock data
+Errore in forecast per notti_vendute: Function.__init__() got an unexpected keyword argument 'else_'
+Traceback (most recent call last):
+  File "D:\hotel gestionale\backend\app\api\v1\endpoints\ai.py", line 158, in get_forecast
+    logger.error(f"Errore in driver discovery: {e}", exc_info=True)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\hotel gestionale\backend\app\core\ai\data_fetcher.py", line 134, in get_forecast_data
+    func.sum(
+        ^^^^^
+  File "D:\hotel gestionale\backend\venv\Lib\site-packages\sqlalchemy\sql\functions.py", line 970, in __call__
+    return Function(
+           ^^^^^^^^^
+TypeError: Function.__init__() got an unexpected keyword argument 'else_'
+Dati reali insufficienti per anomaly detection, uso mock data
+Dati reali insufficienti per driver discovery, uso mock data
+Dati reali insufficienti per driver discovery, uso mock data
+Dati reali insufficienti per anomaly detection, uso mock data
+Errore in forecast per notti_vendute: Function.__init__() got an unexpected keyword argument 'else_'
+Traceback (most recent call last):
+  File "D:\hotel gestionale\backend\app\api\v1\endpoints\ai.py", line 158, in get_forecast
+    logger.error(f"Errore in driver discovery: {e}", exc_info=True)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\hotel gestionale\backend\app\core\ai\data_fetcher.py", line 134, in get_forecast_data
+    func.sum(
+        ^^^^^
+  File "D:\hotel gestionale\backend\venv\Lib\site-packages\sqlalchemy\sql\functions.py", line 970, in __call__
+    return Function(
+           ^^^^^^^^^
+TypeError: Function.__init__() got an unexpected keyword argument 'else_'
+Errore in forecast per coperti: Function.__init__() got an unexpected keyword argument 'else_'
+Traceback (most recent call last):
+  File "D:\hotel gestionale\backend\app\api\v1\endpoints\ai.py", line 158, in get_forecast
+    logger.error(f"Errore in driver discovery: {e}", exc_info=True)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\hotel gestionale\backend\app\core\ai\data_fetcher.py", line 155, in get_forecast_data
+    func.sum(
+        ^^^^^
+  File "D:\hotel gestionale\backend\venv\Lib\site-packages\sqlalchemy\sql\functions.py", line 970, in __call__
+    return Function(
+           ^^^^^^^^^
+TypeError: Function.__init__() got an unexpected keyword argument 'else_'
