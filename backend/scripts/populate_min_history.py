@@ -42,7 +42,7 @@ async def populate_minimal_history():
         cnt = await db.execute(select(func.count(AccountingPeriod.id)).where(AccountingPeriod.hotel_id == hotel.id))
         print("   Periodi residui dopo cleanup: %d" % cnt.scalar())
 
-        print("[INFO] Creazione periodi storici (ultimi 6 mesi)...")
+        print("[INFO] Creazione periodi storici (ultimi 12 mesi)...")
 
         # Get reference data
         activities_res = await db.execute(select(Activity).where(Activity.is_active == True, Activity.hotel_id == hotel.id))
@@ -77,7 +77,8 @@ async def populate_minimal_history():
         created_periods = 0
         created_months = set()
         
-        for i in range(1, 7):
+        # Genera ultimi 12 mesi
+        for i in range(1, 13):
             first_day_of_month = today - timedelta(days=30 * i)
             first_day_of_month = first_day_of_month.replace(day=1)
             month = first_day_of_month.month

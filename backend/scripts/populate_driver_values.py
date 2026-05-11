@@ -1,7 +1,7 @@
 import asyncio
 import uuid
 from decimal import Decimal
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from app.db.database import AsyncSessionFactory
 from app.models.models import (
     AccountingPeriod, DriverValue, CostDriver, Service, Activity,
@@ -11,10 +11,7 @@ from app.models.models import (
 async def populate_driver_values():
     """
     Popola driver_values storici per i driver principali.
-    - DRV-NOT: numero notti per servizio pernottamento (da revenue output_volume)
-    - DRV-COP: coperti per servizi ristorazione/colazione
-    - DRV-ORE: ore lavorate per attività (da LaborAllocation)
-    - DRV-CAM: camere pulite per housekeeping (simulato)
+    Idempotente: cancella tutti i driver values esistenti per l'hotel e rigenera.
     """
     async with AsyncSessionFactory() as db:
         # Prendi hotel default
@@ -24,6 +21,12 @@ async def populate_driver_values():
             print("Nessun hotel Demo trovato.")
             return
         print("Hotel Demo: %s" % hotel.id)
+
+        # Cancella driver values esistenti per questo hotel (idempotente)
+        from sqlalchemy import delete
+        await db.execute(delete(DriverValue).where(DriverValue.hotel_id == hotel.id))
+        await db.flush()
+        print("Pulizia driver values esistenti completata.")
 
         # Prendi tutti i periodi
         periods_q = await db.execute(
