@@ -1,6 +1,13 @@
 import asyncio
 import uuid
+import sys
+from pathlib import Path
 from sqlalchemy import text
+
+# Add the backend directory to sys.path so we can import from app
+backend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_dir))
+
 from app.db.database import AsyncSessionFactory, engine
 from app.models.models import Base
 
@@ -32,7 +39,8 @@ async def migrate():
         tables = [
             "users", "accounting_periods", "cost_centers", "activities", "services",
             "cost_drivers", "driver_values", "cost_items", "employees",
-            "labor_allocations", "allocation_rules", "abc_results", "service_revenues"
+            "labor_allocations", "allocation_rules", "abc_results", "service_revenues",
+            "pms_integrations"
         ]
         
         for table in tables:

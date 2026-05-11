@@ -309,6 +309,11 @@ class Service(Base, UUIDMixin, TimestampMixin):
         primaryjoin="Service.id == AllocationRule.target_service_id",
     )
 
+    __table_args__ = (
+        UniqueConstraint("hotel_id", "code", name="uq_services_hotel_code"),
+        Index("ix_services_hotel", "hotel_id"),
+    )
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DRIVER DI ALLOCAZIONE
@@ -516,8 +521,8 @@ class AllocationRule(Base, UUIDMixin, TimestampMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint("hotel_id", "code", name="uq_services_hotel_code"),
-        Index("ix_services_hotel", "hotel_id"),
+        UniqueConstraint("hotel_id", "name", name="uq_allocation_rules_hotel_name"),
+        Index("ix_allocation_rules_hotel", "hotel_id"),
     )
 
     # Driver
@@ -647,6 +652,38 @@ class ServiceRevenue(Base, UUIDMixin, TimestampMixin):
 # INTEGRAZIONI E MAPPING
 # ─────────────────────────────────────────────────────────────────────────────
 
+class PMSIntegration(Base, UUIDMixin, TimestampMixin):
+    """Configurazione dell'integrazione con i sistemi PMS esterni."""
+    __tablename__ = "pms_integrations"
+
+    hotel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hotels.id"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)  # es. "Zucchetti Hotel", "Mews Cloud"
+    system_type: Mapped[ExternalSystemType] = mapped_column(
+        SAEnum(ExternalSystemType), nullable=False
+    )
+    # Configurazione connessione
+    api_endpoint: Mapped[Optional[str]] = mapped_column(String(255))  # Per PMS_API
+    api_key: Mapped[Optional[str]] = mapped_column(String(255))      # Crittografato in produzione
+    username: Mapped[Optional[str]] = mapped_column(String(100))
+    password: Mapped[Optional[str]] = mapped_column(String(100))     # Crittografato
+    # Impostazioni
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sync_frequency_hours: Mapped[Optional[int]] = mapped_column(Integer, default=24)
+    last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    # Metadati
+    config_data: Mapped[Optional[dict]] = mapped_column(Text, nullable=True)  # JSON per impostazioni aggiuntive
+
+    # relationships
+    hotel: Mapped["Hotel"] = relationship()
+
+    __table_args__ = (
+        UniqueConstraint("hotel_id", "name", name="uq_pms_integrations_hotel_name"),
+        Index("ix_pms_integrations_hotel", "hotel_id"),
+    )
+
+
 class DataImportLog(Base, UUIDMixin, TimestampMixin):
     """Log delle importazioni dati da sistemi esterni."""
     __tablename__ = "data_import_logs"
@@ -675,12 +712,12 @@ class MappingRule(Base, UUIDMixin, TimestampMixin):
     mapping_type: Mapped[MappingType] = mapped_column(SAEnum(MappingType), nullable=False)
     external_code: Mapped[str] = mapped_column(String(100), nullable=False)
     external_description: Mapped[Optional[str]] = mapped_column(String(255))
-    
+     
     # Riferimento interno (uno solo di questi sarà popolato in base a mapping_type)
     target_cost_center_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("cost_centers.id"))
     target_activity_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("activities.id"))
     target_service_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("services.id"))
-    
+     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     confidence_score: Mapped[Optional[float]] = mapped_column(Numeric(3, 2))  # per suggerimenti AI
 

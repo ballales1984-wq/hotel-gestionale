@@ -1,0 +1,32 @@
+conto,descrizione,centro_di_costo,tipo_costo,importo
+400000,Ricavi Camere - Pernottamento,RECEPTION,diretto,15000.00
+400100,Ricavi Prima Colazione,FOOD_BEVERAGE,diretto,3000.00
+400200,Ricavi Ristorante,FOOD_BEVERAGE,diretto,8000.00
+400300,Ricavi Bar,FOOD_BEVERAGE,diretto,2000.00
+400400,Ricavi Spa,SPA,diretto,1500.00
+400500,Ricavi Parcheggio,MAINTENANCE,diretto,500.00
+400600,Ricavi Congresso,CONGRESSI,diretto,1000.00
+400700,Ricavi Altri Servizi,ALTRO,diretto,500.00
+600000,Costo Materie Prime - F&B,FOOD_BEVERAGE,diretto,-3500.00
+600100,Costo Materie Prime - Bar,FOOD_BEVERAGE,diretto,-800.00
+600200,Costo Energia Elettrica,MAINTENANCE,utilities,-1200.00
+600300,Costo Gas,MAINTENANCE,utilities,-300.00
+600400,Costo Acqua,MAINTENANCE,utilities,-150.00
+600500,Costo Manutenzione Ordinaria,MAINTENANCE,struttura,-800.00
+600600,Costo Pulizie,HOUSEKEEPING,struttura,-1000.00
+600700,Costo Lavanderia,HOUSEKEEPING,struttura,-400.00
+600800,Costo Stipendi Reception,RECEPTION,personale,-2500.00
+600900,Costo Stipendi Pulizie,HOUSEKEEPING,personale,-1800.00
+601000,Costo Stipendi Ristorante,FOOD_BEVERAGE,personale,-2200.00
+601100,Costo Stipendi Bar,FOOD_BEVERAGE,personale,-600.00
+601200,Costo Stipendi Amministrazione,AMMINISTRAZIONE,personale,-1500.00
+601300,Costo Stipendi Direzione,DIREZIONE,personale,-2000.00
+601400,Costo Contributi Previdenziali,AMMINISTRAZIONE,personale,-800.00
+601500,Costo Assicurazioni,AMMINISTRAZIONE,struttura,-300.00
+601600,Costo Ammortamenti Immobili,AMMINISTRAZIONE,ammortamento,-1000.00
+601700,Costo Ammortamenti Attrezzature,AMMINISTRAZIONE,ammortamento,-500.00
+601800,Costo Marketing e Pubblicità,COMMERCIALE,struttura,-700.00
+601900,Costo Consulenze Professionali,AMMINISTRAZIONE,struttura,-400.00
+602000,Costo Telefonate e Comunicazioni,AMMINISTRAZIONE,utilities,-100.00
+602100,Costo Bancario Commissioni,AMMINISTRAZIONE,struttura,-150.00
+602200,Costo Altri Servizi Generali,AMMINISTRAZIONE,struttura,-200.00
