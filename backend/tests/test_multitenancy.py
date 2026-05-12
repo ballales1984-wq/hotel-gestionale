@@ -158,8 +158,6 @@ class TestMultiTenantIsolation:
         asyncio.run(create_rules())
 
         r = client.get(f"/api/v1/mapping/?hotel_id={hotel1_id}")
-        if r.status_code != 200:
-            print(f"Response status: {r.status_code}, body: {r.text}")
         assert r.status_code == 200
         rules = r.json()
         assert all(r["hotel_id"] == str(hotel1_id) for r in rules)
