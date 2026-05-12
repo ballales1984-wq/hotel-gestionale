@@ -192,7 +192,7 @@ async def get_forecast(
             date_col='ds',
             metric_col='value',
             periods=periods,
-            freq='M'
+            freq='ME'
         )
         return results
     except Exception as e:

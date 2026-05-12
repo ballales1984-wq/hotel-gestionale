@@ -1,0 +1,17 @@
+WARNING: Skipping D:\hotel gestionale\backend\venv\Lib\site-packages\python_dateutil-2.9.0.dist-info due to invalid metadata entry 'name'
+WARNING: Skipping D:\hotel gestionale\backend\venv\Lib\site-packages\python_dateutil-2.9.0.dist-info due to invalid metadata entry 'name'
+WARNING: Skipping D:\hotel gestionale\backend\venv\Lib\site-packages\python_dateutil-2.9.0.dist-info due to invalid metadata entry 'name'
+
+[notice] A new release of pip is available: 24.0 -> 26.1.1
+[notice] To update, run: python.exe -m pip install --upgrade pip
+
+[notice] A new release of pip is available: 24.0 -> 26.1.1
+[notice] To update, run: python.exe -m pip install --upgrade pip
+INFO:     Will watch for changes in these directories: ['D:\\hotel gestionale\\backend']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [18584] using WatchFiles
+Importing plotly failed. Interactive plots will not work.
+INFO:     Started server process [23032]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in '.venv\Lib\site-packages\sniffio\_impl.py', '.venv\Lib\site-packages\sniffio\__init__.py', '.venv\Lib\site-packages\sniffio\_version.py'. Reloading...

@@ -101,7 +101,7 @@ class ForecastEngine:
         current_date = datetime.date.today()
         
         for i in range(periods):
-            if freq == 'M':
+            if freq == 'ME':
                 current_date = current_date + relativedelta(months=1)
             elif freq == 'W':
                 current_date = current_date + relativedelta(weeks=1)
