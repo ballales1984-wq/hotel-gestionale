@@ -149,7 +149,7 @@ async def test_data_integrity():
         services = (await db.execute(select(Service))).scalars().all()
         for svc in services[:3]:  # Sample first 3
             abc = (await db.execute(
-                select(ABCResult).where(ABCResult.service_id == svc.id)
+                select(ABCResult).where(ABCResult.service_id == svc.id).limit(1)
             )).scalar_one_or_none()
             if abc:
                 test(f"ABC result per {svc.name}", abc.total_cost is not None, "Manca costo totale")
