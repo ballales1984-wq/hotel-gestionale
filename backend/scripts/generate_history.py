@@ -30,7 +30,7 @@ from app.core.abc_engine import ABCEngine
 logger = logging.getLogger(__name__)
 
 
-async def generate_periods(db: AsyncSession, months_back: int = 24):
+async def generate_periods(db: AsyncSession, hotel_id: UUID, months_back: int = 24):
     """Crea periodi contabili mensili retroattivi."""
     logger.info(f"Generazione {months_back} periodi contabili...")
     today = date.today()
@@ -51,7 +51,7 @@ async def generate_periods(db: AsyncSession, months_back: int = 24):
         )
         if existing.scalar_one_or_none():
             continue
-        period = AccountingPeriod(
+        period = AccountingPeriod(hotel_id=hotel_id, 
             name=period_name,
             year=year,
             month=month,
@@ -318,7 +318,7 @@ async def run_abc_calculations(db: AsyncSession, periods):
 async def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
     async with AsyncSessionFactory() as db:
-        periods = await generate_periods(db, months_back=24)
+        hotel_id = (await db.execute(select(Hotel).where(Hotel.code == "DEMO"))).scalar_one().id`n        periods = await generate_periods(db, hotel_id, months_back=24)
         if not periods:
             # Se già esistono, recupera i 12 più recenti (ordine cronologico crescente)
             stmt = select(AccountingPeriod).order_by(AccountingPeriod.year.desc(), AccountingPeriod.month.desc()).limit(12)
@@ -339,3 +339,8 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+
+
+
