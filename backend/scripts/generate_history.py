@@ -23,7 +23,7 @@ from app.models.models import (
     Employee, LaborAllocation, Activity,
     DriverValue, CostDriver,
     ServiceRevenue, Service,
-    ABCResult
+    ABCResult, Hotel
 )
 from app.core.abc_engine import ABCEngine
 
@@ -84,6 +84,7 @@ async def generate_cost_items(db: AsyncSession, periods):
                 amount = base_amounts.get(cost_type, Decimal(random.uniform(500, 5000)))
                 amount = amount * Decimal(random.uniform(0.9, 1.1))
                 item = CostItem(
+                    hotel_id=period.hotel_id,
                     period_id=period.id,
                     cost_center_id=cc.id,
                     account_code=f"60{random.randint(10,99)}",
@@ -100,6 +101,10 @@ async def generate_cost_items(db: AsyncSession, periods):
 
 async def generate_employees_and_labor(db: AsyncSession, periods):
     """Crea dipendenti e loro allocazioni ore per attività."""
+    if not periods:
+        return
+    hotel_id = periods[0].hotel_id
+
     employees = [
         {"code": "001", "name": "Mario Rossi",   "hourly": Decimal("18.50"), "dept": "RECEPTION",    "role": "Receptionist"},
         {"code": "002", "name": "Luigi Verdi",   "hourly": Decimal("19.00"), "dept": "RECEPTION",    "role": "Receptionist"},
@@ -112,11 +117,12 @@ async def generate_employees_and_labor(db: AsyncSession, periods):
     ]
     emp_map = {}
     for emp_data in employees:
-        exist = await db.execute(select(Employee).where(Employee.employee_code == emp_data["code"]))
+        exist = await db.execute(select(Employee).where(Employee.employee_code == emp_data["code"], Employee.hotel_id == hotel_id))
         e = exist.scalar_one_or_none()
         if not e:
             from app.models.models import Department
             e = Employee(
+                hotel_id=hotel_id,
                 employee_code=emp_data["code"],
                 full_name=emp_data["name"],
                 role=emp_data["role"],
@@ -160,6 +166,7 @@ async def generate_employees_and_labor(db: AsyncSession, periods):
                 # Calcola la percentuale effettiva
                 pct = hours / total_hours
                 la = LaborAllocation(
+                    hotel_id=period.hotel_id,
                     period_id=period.id,
                     employee_id=emp.id,
                     activity_id=activities[act_code].id,
@@ -185,15 +192,17 @@ async def generate_driver_values(db: AsyncSession, periods):
             )).scalars().all()
         )
         dv1 = DriverValue(
+            hotel_id=period.hotel_id,
             period_id=period.id,
             driver_id=drivers["DRV-ORE"].id,
-            entity_type='period',  # entity_type per DRV-ORE a livello di periodo
+            entity_type='period',
             entity_id=period.id,
             value=total_labor_hours,
         )
         db.add(dv1)
 
         dv2 = DriverValue(
+            hotel_id=period.hotel_id,
             period_id=period.id,
             driver_id=drivers["DRV-NOT"].id,
             entity_type='period',
@@ -203,6 +212,7 @@ async def generate_driver_values(db: AsyncSession, periods):
         db.add(dv2)
 
         dv3 = DriverValue(
+            hotel_id=period.hotel_id,
             period_id=period.id,
             driver_id=drivers["DRV-CAM"].id,
             entity_type='period',
@@ -212,6 +222,7 @@ async def generate_driver_values(db: AsyncSession, periods):
         db.add(dv3)
 
         dv4 = DriverValue(
+            hotel_id=period.hotel_id,
             period_id=period.id,
             driver_id=drivers["DRV-COP"].id,
             entity_type='period',
@@ -221,6 +232,7 @@ async def generate_driver_values(db: AsyncSession, periods):
         db.add(dv4)
 
         dv5 = DriverValue(
+            hotel_id=period.hotel_id,
             period_id=period.id,
             driver_id=drivers["DRV-MQ"].id,
             entity_type='period',
@@ -230,6 +242,7 @@ async def generate_driver_values(db: AsyncSession, periods):
         db.add(dv5)
 
         dv6 = DriverValue(
+            hotel_id=period.hotel_id,
             period_id=period.id,
             driver_id=drivers["DRV-EVT"].id,
             entity_type='period',
@@ -239,6 +252,7 @@ async def generate_driver_values(db: AsyncSession, periods):
         db.add(dv6)
 
         dv7 = DriverValue(
+            hotel_id=period.hotel_id,
             period_id=period.id,
             driver_id=drivers["DRV-TRX"].id,
             entity_type='period',
@@ -280,6 +294,7 @@ async def generate_service_revenues(db: AsyncSession, periods):
                 volume = None
             revenue = Decimal(random.uniform(min_rev, max_rev))
             sr = ServiceRevenue(
+                hotel_id=period.hotel_id,
                 period_id=period.id,
                 service_id=svc.id,
                 revenue=revenue.quantize(Decimal('0.01')),
@@ -302,7 +317,7 @@ async def run_abc_calculations(db: AsyncSession, periods):
             try:
                 # Chiama endpoint di calcolo ABC (salva automaticamente)
                 resp = await client.post(
-                    f"http://127.0.0.1:8000/api/v1/reports/abc/calculate/{period}",
+                    f"http://127.0.0.1:8000/api/v1/reports/abc/calculate/{period.id}",
                     params={"save_results": "true"}
                 )
                 if resp.status_code == 200:
@@ -318,7 +333,8 @@ async def run_abc_calculations(db: AsyncSession, periods):
 async def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
     async with AsyncSessionFactory() as db:
-        hotel_id = (await db.execute(select(Hotel).where(Hotel.code == "DEMO"))).scalar_one().id`n        periods = await generate_periods(db, hotel_id, months_back=24)
+        hotel_id = (await db.execute(select(Hotel).where(Hotel.code == "DEMO"))).scalar_one().id
+        periods = await generate_periods(db, hotel_id, months_back=24)
         if not periods:
             # Se già esistono, recupera i 12 più recenti (ordine cronologico crescente)
             stmt = select(AccountingPeriod).order_by(AccountingPeriod.year.desc(), AccountingPeriod.month.desc()).limit(12)
