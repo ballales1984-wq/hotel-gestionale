@@ -42,6 +42,41 @@ class JSONEncodedDict(TypeDecorator):
         return json.loads(value)
 
 
+class EncryptedString(TypeDecorator):
+    """SQLAlchemy type for encrypting/decrypting string values.
+    Uses Fernet symmetric encryption via EncryptionService."""
+    impl = String
+    cache_ok = True
+
+    def __init__(self, length: int = 255, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.impl = String(length)
+
+    def process_bind_param(self, value, dialect):
+        """Encrypt value before sending to database."""
+        if value is None:
+            return None
+        # Lazy import to avoid circular dependency
+        from app.core.encryption import get_encryption_service
+        try:
+            return get_encryption_service().encrypt(value)
+        except Exception as e:
+            # In production, you might want to log this
+            raise ValueError(f"Failed to encrypt value: {e}")
+
+    def process_result_value(self, value, dialect):
+        """Decrypt value after fetching from database."""
+        if value is None:
+            return None
+        from app.core.encryption import get_encryption_service
+        decrypted = get_encryption_service().decrypt(value)
+        if decrypted is None:
+            # If decryption fails (wrong key, tampered data), return None or raise
+            # For now, return None to avoid breaking the app
+            return None
+        return decrypted
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # ENUMS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -688,9 +723,9 @@ class PMSIntegration(Base, UUIDMixin, TimestampMixin):
     )
     # Configurazione connessione
     api_endpoint: Mapped[Optional[str]] = mapped_column(String(255))  # Per PMS_API
-    api_key: Mapped[Optional[str]] = mapped_column(String(255))      # Crittografato in produzione
+    api_key: Mapped[Optional[str]] = mapped_column(EncryptedString(255))      # Crittografato
     username: Mapped[Optional[str]] = mapped_column(String(100))
-    password: Mapped[Optional[str]] = mapped_column(String(100))     # Crittografato
+    password: Mapped[Optional[str]] = mapped_column(EncryptedString(100))     # Crittografato
     # Impostazioni
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     sync_frequency_hours: Mapped[Optional[int]] = mapped_column(Integer, default=24)

@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 480  # 8 ore (turno lavoro)
 
+    # ── Encryption ───────────────────────────────────────────────────────────
+    encryption_key: str = Field("", env="ENCRYPTION_KEY")
+    """Chiave Fernet (base64-encoded) per cifrare dati sensibili (api_key, password). 
+    Genera con: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""""
+
     # ── CORS ────────────────────────────────────────────────────────────────
     cors_origins: List[str] = ["http://localhost:3000", "http://localhost:8088"]
 
