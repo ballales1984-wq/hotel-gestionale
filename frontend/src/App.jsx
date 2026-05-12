@@ -6,11 +6,12 @@ import DashboardPage from './pages/DashboardPage'
 import ActivitiesPage from './pages/ActivitiesPage'
 import ServicesPage from './pages/ServicesPage'
 import ImportPage from './pages/ImportPage'
+import PeriodsPage from './pages/PeriodsPage'
 import ABCReportPage from './pages/ABCReportPage'
 import SimulationPage from './pages/SimulationPage'
 import AllocationsPage from './pages/AllocationsPage'
-import PeriodsPage from './pages/PeriodsPage'
 import AiInsightsPage from './pages/AiInsightsPage'
+import PMSIntegrationPage from './pages/PMSIntegrationPage'
 
 function ProtectedRoute({ children }) {
   const token = useAuthStore(s => s.token)
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="services" element={<ServicesPage />} />
         <Route path="allocations" element={<AllocationsPage />} />
         <Route path="import" element={<ImportPage />} />
+        <Route path="pms-integrations" element={<PMSIntegrationPage />} />
         <Route path="periods" element={<PeriodsPage />} />
         <Route path="report" element={<ABCReportPage />} />
         <Route path="simulation" element={<SimulationPage />} />

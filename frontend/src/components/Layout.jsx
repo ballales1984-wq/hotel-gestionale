@@ -13,6 +13,7 @@ const NAV_ITEMS = [
     { to: '/activities', icon: '⚙️', label: 'Attività' },
     { to: '/services', icon: '🏨', label: 'Servizi' },
     { to: '/allocations', icon: '🔀', label: 'Regole di Allocazione' },
+    { to: '/pms-integrations', icon: '🔗', label: 'Integrazioni PMS/ERP' },
   ]},
   { section: 'Dati', items: [
     { to: '/import', icon: '📥', label: 'Import Dati' },
