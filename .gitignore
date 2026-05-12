@@ -10,7 +10,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/   ← commentato: frontend/src/lib contiene codice sorgente
 lib64/
 parts/
 sdist/
@@ -48,6 +48,8 @@ data/
 *.duckdb
 uploads/
 
+backups/
+*.sql
 # ─── Logs ─────────────────────────────────────────────
 *.log
 logs/
