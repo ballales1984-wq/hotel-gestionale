@@ -1,0 +1,54 @@
+groups:
+  - name: general
+    rules:
+      # Alta latenza API (P95 > 2s) per endpoint critici
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "[{{ $labels.job }}] High latency on {{ $labels.endpoint }}"
+          description: "95th percentile latency is {{ $value | humanize }} seconds"
+
+      # Alto tasso di errori 5xx (>5% in 5 min)
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) /
+          sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "[{{ $labels.job }}] High error rate"
+          description: "Error rate {{ $value | humanizePercentage }} over last 5m"
+
+      # Servizio backend down (scrape non riuscita per >2m)
+      - alert: BackendDown
+        expr: up{job="fastapi"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend FastAPI is down"
+          description: "No metrics received from FastAPI backend for >2 minutes"
+
+      # DB connessioni in pool esaurite (se esposta la metrica)
+      - alert: DatabaseConnectionsExhausted
+        expr: db_pool_connections_used / db_pool_connections_max > 0.9
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "{{ $value | humanizePercentage }} of connections used"
+
+      # ABC calculation failures (counter, se esposta)
+      # - alert: ABCCalculationFailures
+      #   expr: increase(abc_calculation_failures_total[10m]) > 0
+      #   for: 1m
+      #   labels:
+      #     severity: warning
+      #   annotations:
+      #     summary: "ABC calculation failed"
+      #     description: "{{ $value }} ABC calculation failures in last 10m"

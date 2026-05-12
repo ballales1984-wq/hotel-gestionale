@@ -1,0 +1,60 @@
+global:
+  # SMTP configuration (customize via environment variables in production)
+  smtp_smarthost: '${SMTP_HOST:smtp.example.com}:${SMTP_PORT:587}'
+  smtp_from: '${SMTP_FROM:alerts@hotel-abc.it}'
+  smtp_auth_username: '${SMTP_USER:}'
+  smtp_auth_password: '${SMTP_PASSWORD:}'
+  smtp_require_tls: true
+
+route:
+  receiver: 'default'
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  group_by: ['alertname', 'severity']
+
+  # Aggiungi route per email o Slack in base a severity
+  routes:
+    - match:
+        severity: critical
+      receiver: 'critical'
+      repeat_interval: 1h
+    - match:
+        severity: warning
+      receiver: 'warning'
+      repeat_interval: 4h
+
+receivers:
+  - name: 'default'
+    email_configs:
+      - to: '${ALERT_EMAIL:ops@hotel-abc.it}'
+        headers:
+          subject: '[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }} for {{ .GroupLabels.job }}'
+        html: |
+          <h3>Alert: {{ .GroupLabels.alertname }}</h3>
+          <p>{{ .CommonAnnotations.description }}</p>
+          <ul>
+            {{ range .Alerts }}
+            <li>{{ .Annotations.summary }}</li>
+            {{ end }}
+          </ul>
+
+  - name: 'critical'
+    email_configs:
+      - to: '${CRITICAL_ALERT_EMAIL:admin@hotel-abc.it}'
+        headers:
+          subject: '[CRITICAL] {{ .GroupLabels.alertname }}'
+
+  - name: 'warning'
+    email_configs:
+      - to: '${WARNING_ALERT_EMAIL:dev@hotel-abc.it}'
+        headers:
+          subject: '[WARNING] {{ .GroupLabels.alertname }}'
+
+  # Esempio Slack (se configurato)
+  # - name: 'slack'
+  #   slack_configs:
+  #     - api_url: '${SLACK_WEBHOOK_URL:}'
+  #       channel: '#alerts'
+  #       title: '[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}'
+  #       text: '{{ .CommonAnnotations.description }}'
