@@ -15,3 +15,15 @@ INFO:     Started server process [23032]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 WARNING:  WatchFiles detected changes in '.venv\Lib\site-packages\sniffio\_impl.py', '.venv\Lib\site-packages\sniffio\__init__.py', '.venv\Lib\site-packages\sniffio\_version.py'. Reloading...
+Dati reali insufficienti per anomaly detection, uso mock data
+12:09:21 - cmdstanpy - INFO - Chain [1] start processing
+12:09:30 - cmdstanpy - INFO - Chain [1] done processing
+12:10:26 - cmdstanpy - INFO - Chain [1] start processing
+12:10:31 - cmdstanpy - INFO - Chain [1] done processing
+Dati reali insufficienti per anomaly detection, uso mock data
+12:10:50 - cmdstanpy - INFO - Chain [1] start processing
+12:10:55 - cmdstanpy - INFO - Chain [1] done processing
+12:11:03 - cmdstanpy - INFO - Chain [1] start processing
+12:11:08 - cmdstanpy - INFO - Chain [1] done processing
+Dati reali insufficienti per anomaly detection, uso mock data
+Dati reali insufficienti per anomaly detection, uso mock data
