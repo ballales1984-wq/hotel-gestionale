@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.models.models import PMSIntegration, ExternalSystemType, Hotel
 from app.config import get_settings
+from app.core.encryption import get_encryption_service
 
 settings = get_settings()
 router = APIRouter()
@@ -97,14 +98,19 @@ async def create_pms_integration(
             detail=f"Esiste già un'integrazione attiva con nome '{data.name}' per questo hotel",
         )
 
+    # Cifra credenziali se presenti
+    enc = get_encryption_service()
+    api_key_enc = enc.encrypt(data.api_key) if data.api_key else None
+    password_enc = enc.encrypt(data.password) if data.password else None
+
     integration = PMSIntegration(
         hotel_id=data.hotel_id,
         name=data.name,
         system_type=system_type,
         api_endpoint=data.api_endpoint,
-        api_key=data.api_key,   # TODO: cifrare
+        api_key=api_key_enc,
         username=data.username,
-        password=data.password, # TODO: cifrare
+        password=password_enc,
         sync_frequency_hours=data.sync_frequency_hours,
         config_data=data.config_data,
         is_active=True,
@@ -156,6 +162,14 @@ async def update_pms_integration(
         raise HTTPException(status_code=404, detail="Integrazione PMS non trovata")
 
     update_data = data.model_dump(exclude_unset=True)
+
+    # Cifra credenziali se presenti
+    if 'api_key' in update_data and update_data['api_key'] is not None:
+        enc = get_encryption_service()
+        update_data['api_key'] = enc.encrypt(update_data['api_key'])
+    if 'password' in update_data and update_data['password'] is not None:
+        enc = get_encryption_service()
+        update_data['password'] = enc.encrypt(update_data['password'])
 
     # If system_type change, validate
     if "system_type" in update_data:
