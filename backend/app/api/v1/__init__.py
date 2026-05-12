@@ -14,6 +14,7 @@ from app.api.v1.endpoints import (
     simulation,
     ai,
     mapping,
+    pms_integrations,
 )
 
 router = APIRouter()
@@ -28,5 +29,6 @@ router.include_router(allocations.router, prefix="/allocations", tags=["allocazi
 router.include_router(reports.router, prefix="/reports", tags=["report ABC"])
 router.include_router(imports.router, prefix="/imports", tags=["import dati"])
 router.include_router(mapping.router, prefix="/mapping", tags=["mapping"])
+router.include_router(pms_integrations.router, prefix="/pms-integrations", tags=["PMS/ERP Integrations"])
 router.include_router(simulation.router, prefix="/simulation", tags=["simulazioni"])
 router.include_router(ai.router, prefix="/ai", tags=["intelligenza artificiale"])

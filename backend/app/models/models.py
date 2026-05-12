@@ -3,6 +3,8 @@ Hotel ABC Platform — Database Models
 Tutti i modelli SQLAlchemy per l'ORM.
 """
 from __future__ import annotations
+import enum
+import json
 import uuid
 from datetime import datetime, date
 from decimal import Decimal
@@ -14,9 +16,30 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
-import enum
+from sqlalchemy.types import TypeDecorator
 
 from app.db.database import Base
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CUSTOM TYPES
+# ─────────────────────────────────────────────────────────────────────────────
+
+class JSONEncodedDict(TypeDecorator):
+    """SQLAlchemy type for JSON encoding/decoding Python dicts.
+    Compatible with SQLite via aiosqlite."""
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return json.dumps(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return json.loads(value)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -126,7 +149,7 @@ class Hotel(Base, UUIDMixin, TimestampMixin):
     address: Mapped[Optional[str]] = mapped_column(String(255))
     vat_number: Mapped[Optional[str]] = mapped_column(String(50))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    settings: Mapped[Optional[dict]] = mapped_column(Text, nullable=True) # JSON config
+    settings: Mapped[Optional[dict]] = mapped_column(JSONEncodedDict, nullable=True)  # JSON config
 
     # relationships
     users: Mapped[List["User"]] = relationship(back_populates="hotel")
@@ -673,7 +696,7 @@ class PMSIntegration(Base, UUIDMixin, TimestampMixin):
     sync_frequency_hours: Mapped[Optional[int]] = mapped_column(Integer, default=24)
     last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     # Metadati
-    config_data: Mapped[Optional[dict]] = mapped_column(Text, nullable=True)  # JSON per impostazioni aggiuntive
+    config_data: Mapped[Optional[dict]] = mapped_column(JSONEncodedDict, nullable=True)  # JSON per impostazioni aggiuntive
 
     # relationships
     hotel: Mapped["Hotel"] = relationship()
