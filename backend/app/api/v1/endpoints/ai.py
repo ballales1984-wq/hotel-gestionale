@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
+from uuid import UUID
 import pandas as pd
 import numpy as np
 from datetime import date, datetime, timedelta
@@ -130,12 +131,15 @@ def _get_fallback_forecast(periods: int) -> List[Dict[str, Any]]:
 # ──────────────────────────────────────────────────────────────────────────────
 
 @router.get("/driver-discovery", response_model=List[AIDriverResult])
-async def discover_drivers(db: AsyncSession = Depends(get_db)):
+async def discover_drivers(
+    hotel_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
     """Analizza dati storici per identificare l'importanza dei driver sui costi."""
     try:
         fetcher = AIDataFetcher(db)
-        df = await fetcher.get_driver_discovery_data()
-        
+        df = await fetcher.get_driver_discovery_data(hotel_id)
+
         # Se non ci sono dati reali sufficienti, usa mock data
         if df.empty or len(df) < 10:
             logger.warning("Dati reali insufficienti per driver discovery, uso mock data")
@@ -148,11 +152,11 @@ async def discover_drivers(db: AsyncSession = Depends(get_db)):
             logger.info(f"Driver discovery con dati reali: {len(df)} periodi")
             # Determina le feature disponibili (con dati non-null e somma > 0)
             features = [f for f in ALL_DRIVER_FEATURES if f in df.columns and df[f].sum() > 0]
-            
+
             if not features:
                 logger.warning("Nessun driver con dati positivi, restituisco fallback")
                 return _get_fallback_driver_results(ALL_DRIVER_FEATURES)
-        
+
         results = discovery_engine.discover_drivers(df, 'overhead_cost', features)
         return results
     except Exception as e:
@@ -162,15 +166,16 @@ async def discover_drivers(db: AsyncSession = Depends(get_db)):
 
 @router.get("/forecast", response_model=List[AIForecastResult])
 async def get_forecast(
-    metric: str = "notti_vendute", 
-    periods: int = 6, 
+    hotel_id: UUID,
+    metric: str = "notti_vendute",
+    periods: int = 6,
     db: AsyncSession = Depends(get_db)
 ):
     """Prevede i valori futuri di una determinata metrica (notti, coperti, ecc.)."""
     try:
         fetcher = AIDataFetcher(db)
-        df = await fetcher.get_forecast_data(metric)
-        
+        df = await fetcher.get_forecast_data(hotel_id, metric)
+
         # Se non ci sono dati reali sufficienti, usa mock data
         if df.empty or len(df) < 5:
             logger.warning(f"Dati reali insufficienti per forecast {metric}, uso mock data")
@@ -185,7 +190,7 @@ async def get_forecast(
                 freq='M'
             )
             return results
-        
+
         logger.info(f"Forecast {metric} con dati reali: {len(df)} punti storici")
         results = forecast_engine.forecast_metric(
             df=df,
@@ -201,21 +206,24 @@ async def get_forecast(
         return _get_fallback_forecast(periods)
 
 @router.get("/anomalies", response_model=List[AIAnomalyResult])
-async def get_anomalies(db: AsyncSession = Depends(get_db)):
+async def get_anomalies(
+    hotel_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
     """Rileva anomalie nei costi rispetto ai volumi."""
     try:
         fetcher = AIDataFetcher(db)
-        df = await fetcher.get_anomaly_detection_data()
-        
+        df = await fetcher.get_anomaly_detection_data(hotel_id)
+
         features = ['costo_lavoro', 'ore', 'volume_output']
-        
+
         # Se non ci sono dati reali sufficienti, usa mock data
         if df.empty or len(df) < 20:
             logger.warning("Dati reali insufficienti per anomaly detection, uso mock data")
             df = _get_mock_data_for_anomalies()
         else:
             logger.info(f"Anomaly detection con dati reali: {len(df)} periodi")
-        
+
         results = anomaly_detector.detect_anomalies(
             df=df,
             feature_cols=features,

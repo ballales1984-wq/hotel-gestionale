@@ -25,19 +25,24 @@ class AIDataFetcher:
         self.db = db
     
     async def get_driver_discovery_data(
-        self, 
+        self,
+        hotel_id: UUID,
         target: str = "overhead_cost"
     ) -> pd.DataFrame:
         """
-        Estrae dati aggregati per periodo per il driver discovery.
-        
+        Estrae dati aggregati per periodo per il driver discovery, filtrati per hotel.
+
+        Args:
+            hotel_id: UUID dell'hotel per cui estrarre i dati.
+            target: metrica target da discovery (default overhead_cost).
+
         Returns:
-            DataFrame con colonne: period_id, year, month, 
+            DataFrame con colonne: period_id, year, month,
             ore_lavorate, notti_vendute, coperti, mq, eventi, overhead_cost
         """
         from app.models.models import CostDriver, Service, ServiceType, DriverValue, ABCResult
-        
-        # Query con subselect scalari per evitare cross-join
+
+        # Query con subselect scalari per evitare cross-join, filtrate per hotel_id
         stmt = select(
             AccountingPeriod.id.label("period_id"),
             AccountingPeriod.year,
@@ -47,15 +52,17 @@ class AIDataFetcher:
                 and_(
                     DriverValue.period_id == AccountingPeriod.id,
                     CostDriver.id == DriverValue.driver_id,
-                    CostDriver.code == "DRV-ORE"
+                    CostDriver.code == "DRV-ORE",
+                    DriverValue.hotel_id == hotel_id,
                 )
             ).scalar_subquery().label("ore_lavorate"),
-            # Notti vendute: somma output_volume per servizi accommodation
+            # Notti vendute: somma output_volume per servizi accommodation (filtrato per hotel)
             select(func.coalesce(func.sum(ABCResult.output_volume), 0)).where(
                 and_(
                     ABCResult.period_id == AccountingPeriod.id,
                     Service.id == ABCResult.service_id,
-                    Service.service_type == ServiceType.ACCOMMODATION
+                    Service.service_type == ServiceType.ACCOMMODATION,
+                    ABCResult.hotel_id == hotel_id,
                 )
             ).scalar_subquery().label("notti_vendute"),
             # Coperti: somma output_volume per servizi ristorazione/colazione
@@ -63,7 +70,8 @@ class AIDataFetcher:
                 and_(
                     ABCResult.period_id == AccountingPeriod.id,
                     Service.id == ABCResult.service_id,
-                    Service.service_type.in_([ServiceType.RESTAURANT, ServiceType.BREAKFAST])
+                    Service.service_type.in_([ServiceType.RESTAURANT, ServiceType.BREAKFAST]),
+                    ABCResult.hotel_id == hotel_id,
                 )
             ).scalar_subquery().label("coperti"),
             # MQ: somma driver DVR-MQ
@@ -71,7 +79,8 @@ class AIDataFetcher:
                 and_(
                     DriverValue.period_id == AccountingPeriod.id,
                     CostDriver.id == DriverValue.driver_id,
-                    CostDriver.code == "DRV-MQ"
+                    CostDriver.code == "DRV-MQ",
+                    DriverValue.hotel_id == hotel_id,
                 )
             ).scalar_subquery().label("mq"),
             # Eventi: somma output_volume per servizi congressi
@@ -79,16 +88,22 @@ class AIDataFetcher:
                 and_(
                     ABCResult.period_id == AccountingPeriod.id,
                     Service.id == ABCResult.service_id,
-                    Service.service_type == ServiceType.CONGRESS
+                    Service.service_type == ServiceType.CONGRESS,
+                    ABCResult.hotel_id == hotel_id,
                 )
             ).scalar_subquery().label("eventi"),
             # Overhead cost: somma overhead_cost da abc_results
             select(func.coalesce(func.sum(ABCResult.overhead_cost), 0)).where(
-                ABCResult.period_id == AccountingPeriod.id
+                and_(
+                    ABCResult.period_id == AccountingPeriod.id,
+                    ABCResult.hotel_id == hotel_id,
+                )
             ).scalar_subquery().label("overhead_cost")
         ).select_from(AccountingPeriod)
+        # Filtra AccountingPeriod per hotel_id (tutti i periodi dell'hotel)
+        stmt = stmt.where(AccountingPeriod.hotel_id == hotel_id)
         stmt = stmt.order_by(AccountingPeriod.year, AccountingPeriod.month)
-        
+
         result = await self.db.execute(stmt)
         rows = result.all()
         
@@ -111,21 +126,23 @@ class AIDataFetcher:
         return df
     
     async def get_forecast_data(
-        self, 
+        self,
+        hotel_id: UUID,
         metric: str = "notti_vendute"
     ) -> pd.DataFrame:
         """
-        Estrae serie storica per forecasting.
-        
+        Estrae serie storica per forecasting, filtrata per hotel.
+
         Args:
+            hotel_id: UUID dell'hotel.
             metric: 'notti_vendute', 'coperti', 'ore_lavorate', 'eventi', etc.
-            
+
         Returns:
             DataFrame con colonne: ds (date), y (valore metric)
         """
         # Mappa metriche a colonne ABCResult o driver_values
         if metric == "notti_vendute":
-            # Somma output_volume per servizi accommodation per periodo
+            # Somma output_volume per servizi accommodation per periodo, filtrato per hotel
             stmt = select(
                 AccountingPeriod.id,
                 AccountingPeriod.year,
@@ -133,7 +150,10 @@ class AIDataFetcher:
                 func.coalesce(
                     func.sum(
                         case(
-                            (Service.service_type == ServiceType.ACCOMMODATION, ABCResult.output_volume),
+                            (
+                                Service.service_type == ServiceType.ACCOMMODATION,
+                                ABCResult.output_volume
+                            ),
                             else_=0
                         )
                     ), 0
@@ -144,8 +164,9 @@ class AIDataFetcher:
             ).join(
                 Service, ABCResult.service_id == Service.id, isouter=True
             )
+            stmt = stmt.where(ABCResult.hotel_id == hotel_id)
             stmt = stmt.group_by(AccountingPeriod.id, AccountingPeriod.year, AccountingPeriod.month)
-            
+
         elif metric == "coperti":
             stmt = select(
                 AccountingPeriod.id,
@@ -168,10 +189,11 @@ class AIDataFetcher:
             ).join(
                 Service, ABCResult.service_id == Service.id, isouter=True
             )
+            stmt = stmt.where(ABCResult.hotel_id == hotel_id)
             stmt = stmt.group_by(AccountingPeriod.id, AccountingPeriod.year, AccountingPeriod.month)
-            
+
         elif metric == "ore_lavorate":
-            # Ore da driver_values con driver DVR-ORE su attività
+            # Ore da driver_values con driver DVR-ORE su attività, filtrate per hotel
             stmt = select(
                 AccountingPeriod.id,
                 AccountingPeriod.year,
@@ -190,8 +212,9 @@ class AIDataFetcher:
             ).join(
                 CostDriver, DriverValue.driver_id == CostDriver.id, isouter=True
             )
+            stmt = stmt.where(DriverValue.hotel_id == hotel_id)
             stmt = stmt.group_by(AccountingPeriod.id, AccountingPeriod.year, AccountingPeriod.month)
-            
+
         elif metric == "eventi":
             stmt = select(
                 AccountingPeriod.id,
@@ -200,7 +223,10 @@ class AIDataFetcher:
                 func.coalesce(
                     func.sum(
                         case(
-                            (Service.service_type == ServiceType.CONGRESS, ABCResult.output_volume),
+                            (
+                                Service.service_type == ServiceType.CONGRESS,
+                                ABCResult.output_volume
+                            ),
                             else_=0
                         )
                     ), 0
@@ -211,10 +237,16 @@ class AIDataFetcher:
             ).join(
                 Service, ABCResult.service_id == Service.id, isouter=True
             )
+            stmt = stmt.where(ABCResult.hotel_id == hotel_id)
             stmt = stmt.group_by(AccountingPeriod.id, AccountingPeriod.year, AccountingPeriod.month)
         else:
             raise ValueError(f"Metrica non supportata: {metric}")
-        
+
+        # Filtra per hotel_id nei periodi (tutti i periodi sono già filtrati per hotel nelle join delle tabelle principali,
+        # ma per sicurezza aggiungiamo anche il filtro su AccountingPeriod se necessario)
+        # Nota: le join con ABCResult/DriverValue già filtrano per hotel. Aggiungiamo anche qui per sicurezza.
+        stmt = stmt.where(AccountingPeriod.hotel_id == hotel_id)
+
         stmt = stmt.order_by(AccountingPeriod.year, AccountingPeriod.month)
         result = await self.db.execute(stmt)
         rows = result.all()
@@ -235,38 +267,51 @@ class AIDataFetcher:
         logger.info(f"Forecast {metric}: estratti {len(df)} punti storici")
         return df[["ds", "value"]]
     
-    async def get_anomaly_detection_data(self) -> pd.DataFrame:
+    async def get_anomaly_detection_data(self, hotel_id: UUID) -> pd.DataFrame:
         """
-        Estrae features per anomaly detection: costi lavoro, ore, volume output per periodo.
-        
+        Estrae features per anomaly detection, filtrate per hotel:
+        costi lavoro, ore, volume output per periodo.
+
+        Args:
+            hotel_id: UUID dell'hotel.
+
         Returns:
             DataFrame con colonne: periodo_id, costo_lavoro, ore, volume_output
         """
         from app.models.models import CostType
-        
-        # Usa subquery scalari per evitare cross-join multiplication
+
+        # Usa subquery scalari per evitare cross-join multiplication, con filtri per hotel
         stmt = select(
             AccountingPeriod.id.label("periodo_id"),
             AccountingPeriod.year,
             AccountingPeriod.month,
-            # Costo del lavoro: somma cost_items con cost_type = LABOR
+            # Costo del lavoro: somma cost_items con cost_type = LABOR, filtrato per hotel
             select(func.coalesce(func.sum(CostItem.amount), 0)).where(
                 and_(
                     CostItem.period_id == AccountingPeriod.id,
-                    CostItem.cost_type == CostType.LABOR
+                    CostItem.cost_type == CostType.LABOR,
+                    CostItem.hotel_id == hotel_id,
                 )
             ).scalar_subquery().label("costo_lavoro"),
-            # Ore totali: somma ore da labor_allocations
+            # Ore totali: somma ore da labor_allocations, filtrate per hotel
             select(func.coalesce(func.sum(LaborAllocation.hours), 0)).where(
-                LaborAllocation.period_id == AccountingPeriod.id
+                and_(
+                    LaborAllocation.period_id == AccountingPeriod.id,
+                    LaborAllocation.hotel_id == hotel_id,
+                )
             ).scalar_subquery().label("ore"),
-            # Volume output totale: somma output_volume da abc_results
+            # Volume output totale: somma output_volume da abc_results, filtrato per hotel
             select(func.coalesce(func.sum(ABCResult.output_volume), 0)).where(
-                ABCResult.period_id == AccountingPeriod.id
+                and_(
+                    ABCResult.period_id == AccountingPeriod.id,
+                    ABCResult.hotel_id == hotel_id,
+                )
             ).scalar_subquery().label("volume_output")
         ).select_from(AccountingPeriod)
+        # Filtra AccountingPeriod per hotel_id
+        stmt = stmt.where(AccountingPeriod.hotel_id == hotel_id)
         stmt = stmt.order_by(AccountingPeriod.year, AccountingPeriod.month)
-        
+
         result = await self.db.execute(stmt)
         rows = result.all()
         
