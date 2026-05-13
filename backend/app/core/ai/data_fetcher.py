@@ -3,6 +3,7 @@ AI Data Fetcher — Estrae dati storici dal database per i motori AI.
 Fornisce dataset pronti per driver discovery, forecasting e anomaly detection.
 """
 import logging
+from datetime import datetime
 from typing import Optional, Dict, List
 from uuid import UUID
 import pandas as pd
