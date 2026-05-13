@@ -115,7 +115,7 @@ export default function CostDriversPage() {
             <button
               className="btn btn-primary"
               onClick={() => editingId ? updateMutation.mutate() : createMutation.mutate()}
-              disabled={!form.name || !form.code || !form.unit}
+              disabled={!hotelId || (!editingId && (!form.name || !form.code || !form.unit))}
             >
               {editingId ? 'Aggiorna' : 'Crea'}
             </button>

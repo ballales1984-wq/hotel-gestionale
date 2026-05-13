@@ -156,7 +156,7 @@ export default function CostCentersPage() {
             <button
               className="btn btn-primary"
               onClick={() => editingId ? updateMutation.mutate() : createMutation.mutate()}
-              disabled={!form.code || !form.name}
+              disabled={!hotelId || (!editingId && (!form.code || !form.name))}
             >
               {editingId ? 'Aggiorna' : 'Crea'}
             </button>
