@@ -106,27 +106,26 @@ async def seed(db: AsyncSession):
         logger.info(f"Hotel Demo esistente: {hotel.id}")
 
     # ── Utente admin ──────────────────────────────────────────────────────
-    # Disabilitato temporaneamente per evitare errori bcrypt
-    # from passlib.context import CryptContext
-    # pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    #
-    # for user_data in [
-    #     {"email": "admin@hotel-abc.it", "name": "Amministratore Sistema", "role": UserRole.ADMIN, "pass": "HotelABC2025!"},
-    #     {"email": "direzione@hotel-abc.it", "name": "Direttore Generale", "role": UserRole.DIRECTOR, "pass": "Direzione2025!"}
-    # ]:
-    #     res = await db.execute(select(User).where(User.email == user_data["email"]))
-    #     if not res.scalar_one_or_none():
-    #         u = User(
-    #             email=user_data["email"],
-    #             full_name=user_data["name"],
-    #             hashed_password=pwd.hash(user_data["pass"]),
-    #             role=user_data["role"],
-    #             hotel_id=hotel.id,
-    #         )
-    #         db.add(u)
-    #         logger.info(f"Creato utente: {user_data['email']}")
-    #     else:
-    #         logger.info(f"Utente già esistente: {user_data['email']}")
+    from passlib.context import CryptContext
+    pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+    for user_data in [
+        {"email": "admin@hotel-abc.it", "name": "Amministratore Sistema", "role": UserRole.ADMIN, "pass": "HotelABC2025!"},
+        {"email": "direzione@hotel-abc.it", "name": "Direttore Generale", "role": UserRole.DIRECTOR, "pass": "Direzione2025!"}
+    ]:
+        res = await db.execute(select(User).where(User.email == user_data["email"]))
+        if not res.scalar_one_or_none():
+            u = User(
+                email=user_data["email"],
+                full_name=user_data["name"],
+                hashed_password=pwd.hash(user_data["pass"]),
+                role=user_data["role"],
+                hotel_id=hotel.id,
+            )
+            db.add(u)
+            logger.info(f"Creato utente: {user_data['email']}")
+        else:
+            logger.info(f"Utente già esistente: {user_data['email']}")
     pass
 
     # ── Centri di costo ───────────────────────────────────────────────────
