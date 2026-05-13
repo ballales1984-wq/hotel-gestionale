@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-Database backup script for PostgreSQL.
-Dumps the database to a .sql file with rotation.
+Database backup script for SQLite.
+Copies the database file with rotation.
 """
 
 import os
 import sys
-import subprocess
+import shutil
 import datetime
-import glob
 from pathlib import Path
 
 # Add backend to path to import settings
-sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
 try:
     from app.config import get_settings
@@ -20,61 +19,58 @@ except ImportError:
     print("Error: Could not import backend settings. Make sure you're running from the project root.")
     sys.exit(1)
 
-def get_db_connection_info():
-    """Extract PostgreSQL connection info from settings."""
+def get_db_path():
+    """Extract SQLite database path from settings."""
     settings = get_settings()
     db_url = settings.database_url
     
-    # Check if we're using PostgreSQL
-    if not db_url.startswith("postgresql"):
-        print(f"Error: This script is designed for PostgreSQL databases. Current URL: {db_url}")
-        print("Set DATABASE_URL environment variable to a PostgreSQL connection string.")
+    # Check if we're using SQLite
+    if not db_url.startswith("sqlite"):
+        print(f"Error: This script is designed for SQLite databases. Current URL: {db_url}")
+        print("Set DATABASE_URL environment variable to a SQLite connection string.")
         sys.exit(1)
     
-    # Parse the URL (simplified - assumes standard format)
-    # postgresql://user:password@host:port/dbname
-    try:
-        # Remove postgresql://
-        url_part = db_url[13:]
-        if '@' in url_part:
-            auth, hostpart = url_part.split('@', 1)
-            if ':' in auth:
-                user, password = auth.split(':', 1)
-            else:
-                user = auth
-                password = ''
-            if ':' in hostpart:
-                hostport, dbname = hostpart.split('/', 1)
-                if ':' in hostport:
-                    host, port = hostport.split(':', 1)
-                else:
-                    host = hostport
-                    port = '5432'
-            else:
-                host = hostpart
-                port = '5432'
-                dbname = ''
+    # Extract path from sqlite:/// or sqlite://// (handle +aiosqlite etc)
+    # Remove driver prefix (sqlite+aiosqlite:/// -> sqlite:///)
+    if "+" in db_url:
+        # Split on + and take the first part, then reconstruct
+        protocol, rest = db_url.split("+", 1)
+        if "://" in rest:
+            driver_part, url_part = rest.split("://", 1)
+            db_url = f"{protocol}://{url_part}"
         else:
-            # No auth
-            hostpart, dbname = url_part.split('/', 1)
-            if ':' in hostpart:
-                host, port = hostpart.split(':', 1)
-            else:
-                host = hostpart
-                port = '5432'
-            user = os.getenv('POSTGRES_USER', 'postgres')
-            password = os.getenv('POSTGRES_PASSWORD', '')
-    except Exception as e:
-        print(f"Error parsing database URL: {e}")
+            db_url = rest
+    
+    # Now handle standard sqlite URL formats
+    if db_url.startswith("sqlite:///"):
+        # Relative or absolute path (3 slashes)
+        db_path = db_url[9:]  # Remove sqlite:///
+    elif db_url.startswith("sqlite:////"):
+        # Absolute path with 4 slashes
+        db_path = db_url[10:]  # Remove sqlite:////
+    else:
+        print(f"Error: Unable to parse SQLite URL: {db_url}")
         sys.exit(1)
     
-    return {
-        'user': user,
-        'password': password,
-        'host': host,
-        'port': port,
-        'dbname': dbname
-    }
+    # Handle relative paths - make them relative to project root
+    if not os.path.isabs(db_path):
+        # The path is relative to where the application runs
+        # Try resolving relative to current directory first
+        attempt1 = os.path.join(os.getcwd(), db_path)
+        # If that doesn't exist, try relative to backend directory (common case)
+        if not os.path.exists(attempt1):
+            backend_path = os.path.join(os.getcwd(), 'backend', db_path.lstrip('./'))
+            if os.path.exists(backend_path):
+                db_path = backend_path
+            else:
+                db_path = attempt1
+        else:
+            db_path = attempt1
+    
+    # Normalize the path to remove any . or .. components
+    db_path = os.path.normpath(db_path)
+    
+    return db_path
 
 def create_backup_dir():
     """Create backup directory if it doesn't exist."""
@@ -85,50 +81,29 @@ def create_backup_dir():
 def generate_backup_filename():
     """Generate a timestamped backup filename."""
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    return f"backup_{timestamp}.sql"
+    return f"backup_{timestamp}.db"
 
-def run_pg_dump(conn_info, backup_path):
-    """Execute pg_dump to create backup."""
-    # Set PGPASSWORD environment variable for psql
-    env = os.environ.copy()
-    if conn_info['password']:
-        env['PGPASSWORD'] = conn_info['password']
+def backup_sqlite_db(db_path, backup_path):
+    """Copy SQLite database file."""
+    print(f"Backing up SQLite database from {db_path} to {backup_path}...")
     
-    cmd = [
-        'pg_dump',
-        '-h', conn_info['host'],
-        '-p', conn_info['port'],
-        '-U', conn_info['user'],
-        '-d', conn_info['dbname'],
-        '-f', str(backup_path),
-        '--verbose'
-    ]
-    
-    print(f"Running pg_dump to {backup_path}...")
     try:
-        result = subprocess.run(
-            cmd,
-            env=env,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        print(result.stdout)
-        if result.stderr:
-            print("STDERR:", result.stderr)
+        # Ensure the source database exists
+        if not os.path.exists(db_path):
+            print(f"Error: Source database not found: {db_path}")
+            return False
+        
+        # Copy the database file
+        shutil.copy2(db_path, backup_path)
+        print("Backup completed successfully!")
         return True
-    except subprocess.CalledProcessError as e:
-        print(f"Error running pg_dump: {e}")
-        print("STDOUT:", e.stdout)
-        print("STDERR:", e.stderr)
-        return False
-    except FileNotFoundError:
-        print("Error: pg_dump command not found. Make sure PostgreSQL client tools are installed and in PATH.")
+    except Exception as e:
+        print(f"Error copying database: {e}")
         return False
 
 def rotate_backups(backup_dir, keep_daily=7, keep_weekly=4, keep_monthly=6):
     """Rotate backup files, keeping specified number of daily, weekly, monthly backups."""
-    backup_files = list(backup_dir.glob("backup_*.sql"))
+    backup_files = list(backup_dir.glob("backup_*.db"))
     if not backup_files:
         return
     
@@ -161,11 +136,11 @@ def rotate_backups(backup_dir, keep_daily=7, keep_weekly=4, keep_monthly=6):
 
 def main():
     """Main backup function."""
-    print("Starting database backup...")
+    print("Starting SQLite database backup...")
     
-    # Get connection info
-    conn_info = get_db_connection_info()
-    print(f"Connecting to {conn_info['host']}:{conn_info['port']}/{conn_info['dbname']} as {conn_info['user']}")
+    # Get database path
+    db_path = get_db_path()
+    print(f"Source database: {db_path}")
     
     # Create backup directory
     backup_dir = create_backup_dir()
@@ -176,7 +151,7 @@ def main():
     backup_path = backup_dir / backup_filename
     
     # Run backup
-    success = run_pg_dump(conn_info, backup_path)
+    success = backup_sqlite_db(db_path, backup_path)
     
     if success:
         # Get file size
