@@ -2,9 +2,12 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import ActivitiesPage from './pages/ActivitiesPage'
 import ServicesPage from './pages/ServicesPage'
+import CostCentersPage from './pages/CostCentersPage'
+import CostDriversPage from './pages/CostDriversPage'
 import ImportPage from './pages/ImportPage'
 import PeriodsPage from './pages/PeriodsPage'
 import ABCReportPage from './pages/ABCReportPage'
@@ -25,6 +28,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={token ? <Navigate to="/" /> : <LoginPage />} />
+      <Route path="/register" element={token ? <Navigate to="/" /> : <RegisterPage />} />
       <Route
         path="/"
         element={
@@ -36,6 +40,8 @@ export default function App() {
         <Route index element={<DashboardPage />} />
         <Route path="activities" element={<ActivitiesPage />} />
         <Route path="services" element={<ServicesPage />} />
+        <Route path="cost-centers" element={<CostCentersPage />} />
+        <Route path="cost-drivers" element={<CostDriversPage />} />
         <Route path="allocations" element={<AllocationsPage />} />
         <Route path="import" element={<ImportPage />} />
         <Route path="pms-integrations" element={<PMSIntegrationPage />} />

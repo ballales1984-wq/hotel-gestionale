@@ -31,7 +31,11 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
-enc_service = get_encryption_service()
+
+
+def _get_enc_service():
+    """Lazy initialization dell'encryption service (evita crash a import time)."""
+    return get_encryption_service()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -49,7 +53,7 @@ class SyncResult:
         errors: Optional[List[str]] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ):
-        self.status = status            # "success" | "partial" | "error"
+        self.status = status
         self.hotel_id = hotel_id
         self.integration_id = integration_id
         self.records_imported = records_imported
@@ -66,13 +70,10 @@ async def run_sync(integration_id: UUID) -> SyncResult:
     Entrypoint per sincronizzazione PMS.
     Viene chiamato dal background task.
     """
-    # Ottieni sessione DB (nuova sessione per il background task)
-    # Nota: in produzione con Celery/Prefect va gestita session lifecycle diversamente
     from app.db.database import AsyncSessionLocal
 
     async with AsyncSessionFactory() as db:
         try:
-            # 1. Recupera configurazione integrazione
             integration = await db.get(PMSIntegration, integration_id)
             if not integration or not integration.is_active:
                 return SyncResult(
@@ -82,7 +83,6 @@ async def run_sync(integration_id: UUID) -> SyncResult:
                     errors=["Integrazione non trovata o disattivata"],
                 )
 
-            # 2. Controlla che l'hotel sia attivo
             hotel = await db.get(Hotel, integration.hotel_id)
             if not hotel or not hotel.is_active:
                 return SyncResult(
@@ -97,33 +97,27 @@ async def run_sync(integration_id: UUID) -> SyncResult:
                 hotel.code, integration.name, integration.system_type.value
             )
 
-            # 3. Decifra credenziali se necessario
+            # Decifra credenziali se necessario
             api_key = None
             password = None
             if integration.api_key:
                 try:
-                    api_key = enc_service.decrypt(integration.api_key)
+                    api_key = _get_enc_service().decrypt(integration.api_key)
                 except Exception as e:
                     logger.warning("Failed decrypt api_key: %s", e)
             if integration.password:
                 try:
-                    password = enc_service.decrypt(integration.password)
+                    password = _get_enc_service().decrypt(integration.password)
                 except Exception as e:
                     logger.warning("Failed decrypt password: %s", e)
 
-            # 4. Esegui sync in base al system_type
+            # Esegui sync in base al system_type
             if integration.system_type == ExternalSystemType.PMS_API:
-                result = await _sync_pms_api(
-                    db, integration, hotel, api_key, password
-                )
+                result = await _sync_pms_api(db, integration, hotel, api_key, password)
             elif integration.system_type == ExternalSystemType.PMS_CSV:
-                result = await _sync_pms_csv(
-                    db, integration, hotel, integration.config_data
-                )
+                result = await _sync_pms_csv(db, integration, hotel, integration.config_data)
             elif integration.system_type in (ExternalSystemType.ERP_API, ExternalSystemType.ERP_CSV):
-                result = await _sync_erp(
-                    db, integration, hotel, api_key, password
-                )
+                result = await _sync_erp(db, integration, hotel, api_key, password)
             elif integration.system_type == ExternalSystemType.MANUAL:
                 result = SyncResult(
                     status="skipped",
@@ -139,12 +133,10 @@ async def run_sync(integration_id: UUID) -> SyncResult:
                     errors=[f"Tipo integrazione non supportato: {integration.system_type.value}"],
                 )
 
-            # 5. Aggiorna last_sync_at se successo/parziale
             if result.status in ("success", "partial"):
                 integration.last_sync_at = datetime.utcnow()
                 await db.commit()
 
-            # 6. Logga risultato in DataImportLog
             await _log_import(db, integration, hotel, result)
 
             logger.info(
@@ -174,11 +166,7 @@ async def _sync_pms_api(
     api_key: Optional[str],
     password: Optional[str],
 ) -> SyncResult:
-    """
-    Sincronizza da un PMS via API REST.
-    Implementazione placeholder: recupera dati da endpoint configurato.
-    In produzione, va implementato il client specifico per ogni PMS.
-    """
+    """Sincronizza da un PMS via API REST."""
     errors = []
     records_imported = 0
 
@@ -190,24 +178,16 @@ async def _sync_pms_api(
             errors=["API endpoint non configurato"],
         )
 
+    logger.info("PMS API sync: endpoint=%s, hotel=%s", integration.api_endpoint, hotel.code)
+
     # TODO: Implementare client API per PMS specifici (Mews, Zucchetti, Opera, etc.)
-    # Per ora, restituisce simulate success
-    logger.info(
-        "PMS API sync: endpoint=%s, hotel=%s",
-        integration.api_endpoint, hotel.code
-    )
-
-    # Simula importazione dati di esempio
-    # In produzione: fare chiamate HTTP con headers (api_key, basic auth, etc.)
-    # e processare risposta JSON/XML
-
     return SyncResult(
         status="success",
         hotel_id=hotel.id,
         integration_id=integration.id,
         records_imported=0,
         errors=[],
-        metadata={"note": "PMS API sync non implementato - placeholder"},
+        metadata={"note": "PMS API sync placeholder"},
     )
 
 
@@ -217,17 +197,7 @@ async def _sync_pms_csv(
     hotel: Hotel,
     config_data: Optional[Dict[str, Any]],
 ) -> SyncResult:
-    """
-    Sincronizza da file CSV.
-    Il config_data può contenere:
-      - file_path: path locale o URL
-      - delimiter: separatore (default ',')
-      - encoding: (default 'utf-8')
-    Formato CSV atteso (colonnes, case-insensitive):
-      date, service_code, revenue [, quantity] [, output_volume]
-    Esempio:
-      2025-05-01, ACCOMMODATION, 15000, 100
-    """
+    """Sincronizza da file CSV."""
     errors = []
     records_imported = 0
 
@@ -245,17 +215,14 @@ async def _sync_pms_csv(
 
     logger.info("PMS CSV sync: file=%s, hotel=%s", file_path, hotel.code)
 
-    # Leggi contenuto CSV (supporto locale/URL)
     content = None
     try:
         if isinstance(file_path, str) and (file_path.startswith('http://') or file_path.startswith('https://')):
-            import httpx
             async with httpx.AsyncClient() as client:
                 resp = await client.get(file_path, timeout=30)
                 resp.raise_for_status()
                 content = resp.content.decode(encoding)
         else:
-            # Path locale
             with open(file_path, 'r', encoding=encoding) as f:
                 content = f.read()
     except Exception as e:
@@ -265,11 +232,6 @@ async def _sync_pms_csv(
             integration_id=integration.id,
             errors=[f"Impossibile leggere file CSV: {e}"],
         )
-
-    # Parse CSV
-    import csv
-    import io
-    from decimal import Decimal
 
     try:
         reader = csv.DictReader(io.StringIO(content), delimiter=delimiter)
@@ -281,7 +243,6 @@ async def _sync_pms_csv(
                 errors=["CSV vuoto o senza header"],
             )
 
-        # Mapping colonne (case-insensitive)
         col_map = {}
         required = {'date', 'service_code', 'revenue'}
         for col in reader.fieldnames:
@@ -303,15 +264,13 @@ async def _sync_pms_csv(
                 status="error",
                 hotel_id=hotel.id,
                 integration_id=integration.id,
-                errors=[f"Colonne CSV mancanti: {missing}. Presenti: {reader.fieldnames}"],
+                errors=[f"Colonne CSV mancanti: {missing}"],
             )
 
-        # Itera righe
         row_count = 0
         for row in reader:
             row_count += 1
             try:
-                # Data
                 date_str = row[col_map['date']].strip()
                 try:
                     row_date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -319,51 +278,41 @@ async def _sync_pms_csv(
                     try:
                         row_date = datetime.strptime(date_str, '%d/%m/%Y').date()
                     except ValueError:
-                        errors.append(f"Riga {row_count}: formato data non valido '{date_str}'")
+                        errors.append(f"Riga {row_count}: formato data non valido")
                         continue
 
-                # Codice servizio
                 service_code = row[col_map['service_code']].strip()
                 if not service_code:
                     errors.append(f"Riga {row_count}: service_code vuoto")
                     continue
 
-                # Revenue (Decimal)
                 rev_str = row[col_map['revenue']].strip().replace(',', '.').replace('$', '').replace('€', '')
                 try:
                     revenue = Decimal(rev_str)
                 except Exception:
-                    errors.append(f"Riga {row_count}: revenue non valido '{rev_str}'")
+                    errors.append(f"Riga {row_count}: revenue non valido")
                     continue
 
-                # Quantity / output_volume (opzionale)
                 quantity = Decimal('1')
-                if 'quantity' in col_map:
-                    qty_str = row[col_map['quantity']].strip()
-                    if qty_str:
-                        try:
-                            quantity = Decimal(qty_str.replace(',', '.'))
-                        except Exception:
-                            quantity = Decimal('1')
+                if 'quantity' in col_map and row[col_map['quantity']].strip():
+                    try:
+                        quantity = Decimal(row[col_map['quantity']].strip().replace(',', '.'))
+                    except Exception:
+                        quantity = Decimal('1')
+
                 output_volume = quantity
-                if 'output_volume' in col_map:
-                    out_str = row[col_map['output_volume']].strip()
-                    if out_str:
-                        try:
-                            output_volume = Decimal(out_str.replace(',', '.'))
-                        except Exception:
-                            output_volume = quantity
+                if 'output_volume' in col_map and row[col_map['output_volume']].strip():
+                    try:
+                        output_volume = Decimal(row[col_map['output_volume']].strip().replace(',', '.'))
+                    except Exception:
+                        output_volume = quantity
 
-                # Periodo contabile
                 period = await _get_or_create_period(db, hotel.id, datetime.combine(row_date, datetime.min.time()))
-
-                # Servizio (cerca per code, o uso mapping esterno)
                 service = await _find_service(db, hotel.id, service_code)
                 if not service:
                     errors.append(f"Riga {row_count}: servizio '{service_code}' non trovato")
                     continue
 
-                # Upsert ServiceRevenue
                 stmt = select(ServiceRevenue).where(
                     ServiceRevenue.hotel_id == hotel.id,
                     ServiceRevenue.period_id == period.id,
@@ -386,7 +335,7 @@ async def _sync_pms_csv(
                     db.add(sr)
 
                 records_imported += 1
-                await db.flush()  # flush periodicamente per evitare accumulo troppo grande
+                await db.flush()
             except Exception as e:
                 errors.append(f"Riga {row_count}: errore generico {str(e)}")
                 continue
@@ -401,7 +350,6 @@ async def _sync_pms_csv(
             errors=errors,
             metadata={"rows_processed": row_count, "file": file_path},
         )
-
     except Exception as e:
         logger.exception("CSV sync failed")
         return SyncResult(
@@ -419,7 +367,7 @@ async def _sync_erp(
     api_key: Optional[str],
     password: Optional[str],
 ) -> SyncResult:
-    """Placeholder per sincronizzazione ERP (contabilità, payroll)."""
+    """Placeholder per sincronizzazione ERP."""
     logger.info("ERP sync non implementato: hotel=%s, integration=%s", hotel.code, integration.name)
     return SyncResult(
         status="skipped",
@@ -461,7 +409,6 @@ async def _log_import(
 
 async def _find_service(db: AsyncSession, hotel_id: UUID, code: str) -> Optional[Service]:
     """Cerca servizio per codice interno o tramite mapping esterno."""
-    # Cerca diretto
     stmt = select(Service).where(
         Service.hotel_id == hotel_id,
         Service.code == code,
@@ -470,13 +417,8 @@ async def _find_service(db: AsyncSession, hotel_id: UUID, code: str) -> Optional
     svc = (await db.execute(stmt)).scalar_one_or_none()
     if svc:
         return svc
-    # Cerca tramite MappingRule (external_code -> service)
     return await _get_service_by_external_code(db, hotel_id, code)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# SUPPORT FUNCTIONS
-# ─────────────────────────────────────────────────────────────────────────────
 
 async def _get_or_create_period(
     db: AsyncSession,
@@ -487,7 +429,6 @@ async def _get_or_create_period(
     year = date.year
     month = date.month
 
-    # Cerca esistente
     stmt = select(AccountingPeriod).where(
         AccountingPeriod.hotel_id == hotel_id,
         AccountingPeriod.year == year,
@@ -497,7 +438,6 @@ async def _get_or_create_period(
     period = result.scalar_one_or_none()
 
     if not period:
-        # Crea nome mese in italiano
         months_ita = [
             "", "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
             "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
@@ -512,7 +452,7 @@ async def _get_or_create_period(
             is_closed=False,
         )
         db.add(period)
-        await db.flush()  # ottiene l'ID senza commit
+        await db.flush()
 
     return period
 
@@ -534,18 +474,3 @@ async def _get_service_by_external_code(
     if rule and rule.target_service_id:
         return await db.get(Service, rule.target_service_id)
     return None
-
-
-async def _find_service(db: AsyncSession, hotel_id: UUID, code: str) -> Optional[Service]:
-    """Cerca servizio per codice interno o tramite mapping esterno."""
-    # Cerca diretto
-    stmt = select(Service).where(
-        Service.hotel_id == hotel_id,
-        Service.code == code,
-        Service.is_active == True,
-    )
-    svc = (await db.execute(stmt)).scalar_one_or_none()
-    if svc:
-        return svc
-    # Cerca tramite MappingRule (external_code -> service)
-    return await _get_service_by_external_code(db, hotel_id, code)

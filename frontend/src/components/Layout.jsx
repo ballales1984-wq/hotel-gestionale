@@ -12,6 +12,8 @@ const NAV_ITEMS = [
     { to: '/periods', icon: '📅', label: 'Periodi' },
     { to: '/activities', icon: '⚙️', label: 'Attività' },
     { to: '/services', icon: '🏨', label: 'Servizi' },
+    { to: '/cost-centers', icon: '🏢', label: 'Centri di Costo' },
+    { to: '/cost-drivers', icon: '📐', label: 'Driver di Allocazione' },
     { to: '/allocations', icon: '🔀', label: 'Regole di Allocazione' },
     { to: '/pms-integrations', icon: '🔗', label: 'Integrazioni PMS/ERP' },
   ]},

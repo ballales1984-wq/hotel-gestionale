@@ -38,6 +38,7 @@ export const authApi = {
     form.append('password', password)
     return api.post('/api/v1/auth/login', form)
   },
+  register: (data) => api.post('/api/v1/auth/register', data),
   me: () => api.get('/api/v1/auth/me'),
 }
 
@@ -101,4 +102,20 @@ export const pmsIntegrationsApi = {
   update: (id, data) => api.put(`/api/v1/pms-integrations/${id}`, data),
   delete: (id) => api.delete(`/api/v1/pms-integrations/${id}`),
   sync: (id) => api.post(`/api/v1/pms-integrations/${id}/sync`),
+}
+
+export const costCentersApi = {
+  list: (hotelId) => api.get('/api/v1/cost-centers/', { params: hotelId ? { hotel_id: hotelId } : {} }),
+  get: (id) => api.get(`/api/v1/cost-centers/${id}`),
+  create: (data) => api.post('/api/v1/cost-centers/', data),
+  update: (id, data) => api.put(`/api/v1/cost-centers/${id}`, data),
+  delete: (id) => api.delete(`/api/v1/cost-centers/${id}`),
+}
+
+export const costDriversApi = {
+  list: (hotelId) => api.get('/api/v1/cost-drivers/', { params: hotelId ? { hotel_id: hotelId } : {} }),
+  get: (id) => api.get(`/api/v1/cost-drivers/${id}`),
+  create: (data) => api.post('/api/v1/cost-drivers/', data),
+  update: (id, data) => api.put(`/api/v1/cost-drivers/${id}`, data),
+  delete: (id) => api.delete(`/api/v1/cost-drivers/${id}`),
 }
