@@ -45,7 +45,7 @@ class Settings(BaseSettings):
 
     # ── Encryption ───────────────────────────────────────────────────────────
     encryption_key: str = Field("", env="ENCRYPTION_KEY")
-    """Chiave Fernet (base64-encoded) per cifrare dati sensibili (api_key, password). 
+    """Chiave Fernet (base64-encoded) per cifrare dati sensibili (api_key, password).
     Genera con: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""""
 
     # ── CORS ────────────────────────────────────────────────────────────────
@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     # ── ABC Engine ──────────────────────────────────────────────────────────
     abc_max_iterations: int = 10        # max iterazioni ribaltamenti circolari
     abc_convergence_threshold: float = 0.001  # soglia convergenza
+
+    # ── PMS Sync ──────────────────────────────────────────────────────────
+    sync_timeout: int = 60  # Timeout in secondi per le chiamate API PMS
 
 
 @lru_cache()

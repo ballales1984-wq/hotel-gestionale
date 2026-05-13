@@ -4,11 +4,12 @@ Consente di definire credenziali, endpoint e sync schedule.
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +18,9 @@ from app.db.database import get_db
 from app.models.models import PMSIntegration, ExternalSystemType, Hotel
 from app.config import get_settings
 from app.core.encryption import get_encryption_service
+from app.core.pms_sync import SyncResult, run_sync
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 router = APIRouter()
 
@@ -205,20 +208,35 @@ async def delete_pms_integration(
 @router.post("/{integration_id}/sync", summary="Avvia sincronizzazione manuale")
 async def sync_pms_integration(
     integration_id: UUID,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
-    """Avvia una sincronizzazione manuale dati dal PMS configured.
-    Restituisce batch_id per tracciamento importazione."""
+    """Avvia una sincronizzazione manuale dati dal PMS configurato.
+    Esegue il sync in background e restituisce immediatamente un job_id."""
     integration = await db.get(PMSIntegration, integration_id)
     if not integration:
         raise HTTPException(status_code=404, detail="Integrazione PMS non trovata")
     if not integration.is_active:
         raise HTTPException(status_code=400, detail="Integrazione disattivata")
 
-    # TODO: implement trigger sync job (background task or Celery)
-    # Per ora, restituisce un placeholder
+    # Esegui sync in background
+    background_tasks.add_task(_run_sync_task, integration_id)
+
     return {
         "status": "queued",
         "integration_id": str(integration_id),
-        "message": "Sync job accodato (da implementare)",
+        "message": "Sync job avviato in background",
+        "system_type": integration.system_type.value,
     }
+
+
+async def _run_sync_task(integration_id: UUID):
+    """Task in background per eseguire il sync PMS."""
+    logger.info("Task sync PMS avviato per integration_id=%s", integration_id)
+    result = await run_sync(integration_id)
+    logger.info(
+        "Task sync PMS completato: status=%s, imported=%d, errors=%d",
+        result.status,
+        result.records_imported,
+        len(result.errors),
+    )
