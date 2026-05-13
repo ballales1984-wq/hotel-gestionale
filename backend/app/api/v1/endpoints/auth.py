@@ -1,5 +1,5 @@
 """Auth endpoint — Login JWT."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -27,6 +27,7 @@ class Token(BaseModel):
     user_id: str
     full_name: str
     role: str
+    hotel_id: Optional[UUID] = None
 
 
 class UserCreate(BaseModel):
@@ -46,7 +47,7 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (
+    expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
     )
     to_encode.update({"exp": expire})
@@ -90,7 +91,7 @@ async def login(
         )
 
     token = create_access_token({"sub": str(user.id)})
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now(timezone.utc)
     await db.commit()
 
     return Token(
@@ -99,6 +100,7 @@ async def login(
         user_id=str(user.id),
         full_name=user.full_name,
         role=user.role.value,
+        hotel_id=user.hotel_id,
     )
 
 
@@ -126,6 +128,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         user_id=str(user.id),
         full_name=user.full_name,
         role=user.role.value,
+        hotel_id=user.hotel_id,
     )
 
 
@@ -137,4 +140,5 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "full_name": current_user.full_name,
         "role": current_user.role.value,
         "department": current_user.department.value if current_user.department else None,
+        "hotel_id": str(current_user.hotel_id) if current_user.hotel_id else None,
     }

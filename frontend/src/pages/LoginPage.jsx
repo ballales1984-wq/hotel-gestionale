@@ -20,6 +20,7 @@ export default function LoginPage() {
         id: res.data.user_id,
         full_name: res.data.full_name,
         role: res.data.role,
+        hotel_id: res.data.hotel_id,
       })
       navigate('/')
       toast.success('Accesso effettuato')

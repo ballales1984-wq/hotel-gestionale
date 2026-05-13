@@ -1,27 +1,44 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { aiApi } from '../lib/api'
+import { aiApi, authApi } from '../lib/api'
+import { useAuthStore } from '../store/authStore'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceArea } from 'recharts'
 
 export default function AiInsightsPage() {
   const [forecastMetric, setForecastMetric] = useState('notti_vendute')
   const [forecastPeriods, setForecastPeriods] = useState(6)
+  const user = useAuthStore(s => s.user)
+
+  const hotelId = user?.hotel_id
 
   // Queries AI
   const { data: drivers, isLoading: loadingDrivers } = useQuery({
-    queryKey: ['ai-drivers'],
-    queryFn: () => aiApi.driverDiscovery().then(r => r.data),
+    queryKey: ['ai-drivers', hotelId],
+    queryFn: () => aiApi.driverDiscovery(hotelId).then(r => r.data),
+    enabled: !!hotelId,
   })
 
   const { data: forecast, isLoading: loadingForecast } = useQuery({
-    queryKey: ['ai-forecast', forecastMetric, forecastPeriods],
-    queryFn: () => aiApi.forecast(forecastMetric, forecastPeriods).then(r => r.data),
+    queryKey: ['ai-forecast', hotelId, forecastMetric, forecastPeriods],
+    queryFn: () => aiApi.forecast(hotelId, forecastMetric, forecastPeriods).then(r => r.data),
+    enabled: !!hotelId,
   })
 
   const { data: anomalies, isLoading: loadingAnomalies } = useQuery({
-    queryKey: ['ai-anomalies'],
-    queryFn: () => aiApi.anomalies().then(r => r.data),
+    queryKey: ['ai-anomalies', hotelId],
+    queryFn: () => aiApi.anomalies(hotelId).then(r => r.data),
+    enabled: !!hotelId,
   })
+
+  if (!hotelId) {
+    return (
+      <div className="fade-in" style={{ textAlign: 'center', marginTop: 60 }}>
+        <p style={{ fontSize: 18, color: 'var(--text-muted)' }}>
+          ⚠️ Il tuo account non è associato a nessun hotel. Contatta l'amministratore.
+        </p>
+      </div>
+    )
+  }
 
   const CustomTooltipForecast = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null

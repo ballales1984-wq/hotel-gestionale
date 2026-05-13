@@ -3,8 +3,8 @@ AI Data Fetcher — Estrae dati storici dal database per i motori AI.
 Fornisce dataset pronti per driver discovery, forecasting e anomaly detection.
 """
 import logging
-from datetime import datetime
 from typing import Optional, Dict, List
+from uuid import UUID
 import pandas as pd
 from sqlalchemy import select, func, and_
 from sqlalchemy.sql import case
@@ -252,7 +252,7 @@ class AIDataFetcher:
         rows = result.all()
         
         if not rows:
-            logger.warning(f"Nessun dato trovata per forecasting metric: {metric}")
+            logger.warning(f"Nessun dato trovato per forecasting metric: {metric}")
             return pd.DataFrame()
         
         # Costruisci DataFrame

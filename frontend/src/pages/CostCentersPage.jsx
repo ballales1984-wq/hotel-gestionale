@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { costCentersApi } from '../lib/api'
+import { useAuthStore } from '../store/authStore'
 import toast from 'react-hot-toast'
 
 const DEPARTMENTS = [
@@ -11,30 +12,56 @@ const DEPARTMENTS = [
 ]
 
 export default function CostCentersPage() {
+  const user = useAuthStore(s => s.user)
+  const hotelId = user?.hotel_id
+
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  const [form, setForm] = useState({
-    code: '', name: '', department: 'reception', parent_id: '', description: ''
-  })
+  const [form, setForm] = useState({ code: '', name: '', department: 'reception', parent_id: '', description: '' })
   const qc = useQueryClient()
 
   const { data: centers = [], isLoading } = useQuery({
-    queryKey: ['cost-centers'],
-    queryFn: () => costCentersApi.list().then(r => r.data),
+    queryKey: ['cost-centers', hotelId],
+    queryFn: () => costCentersApi.list(hotelId).then(r => r.data),
+    enabled: !!hotelId,
   })
 
   const createMutation = useMutation({
     mutationFn: () => costCentersApi.create({
       ...form,
+      hotel_id: hotelId,
       parent_id: form.parent_id || null,
     }),
     onSuccess: () => {
       toast.success('Centro di costo creato')
       setShowForm(false)
       resetForm()
-      qc.invalidateQueries({ queryKey: ['cost-centers'] })
+      qc.invalidateQueries({ queryKey: ['cost-centers', hotelId] })
     },
     onError: (err) => toast.error(err.response?.data?.detail || 'Errore'),
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: () => costCentersApi.update(editingId, {
+      ...form,
+      parent_id: form.parent_id || null,
+    }),
+    onSuccess: () => {
+      toast.success('Centro di costo aggiornato')
+      setShowForm(false)
+      setEditingId(null)
+      resetForm()
+      qc.invalidateQueries({ queryKey: ['cost-centers', hotelId] })
+    },
+    onError: (err) => toast.error(err.response?.data?.detail || 'Errore'),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => costCentersApi.delete(id),
+    onSuccess: () => {
+      toast.success('Centro di costo disattivato')
+      qc.invalidateQueries({ queryKey: ['cost-centers', hotelId] })
+    },
   })
 
   const updateMutation = useMutation({

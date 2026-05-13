@@ -7,9 +7,21 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
-from app.models.models import CostDriver, DriverType, Hotel
+from app.models.models import CostDriver, DriverType, Hotel, User
+from app.api.v1.endpoints.auth import get_current_user
 
 router = APIRouter()
+
+
+def enforce_hotel_access(current_user: User, requested_hotel_id: Optional[UUID]) -> UUID:
+    """Verifica che l'utente possa accedere all'hotel richiesto."""
+    if requested_hotel_id is None:
+        if current_user.hotel_id is None:
+            raise HTTPException(status_code=403, detail="Utente non associato ad alcun hotel")
+        return current_user.hotel_id
+    if current_user.hotel_id != requested_hotel_id:
+        raise HTTPException(status_code=403, detail="Accesso non consentito a questo hotel")
+    return requested_hotel_id
 
 
 class CostDriverSchema(BaseModel):
@@ -49,10 +61,10 @@ async def list_cost_drivers(
     hotel_id: Optional[UUID] = None,
     is_active: Optional[bool] = True,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    q = select(CostDriver)
-    if hotel_id:
-        q = q.where(CostDriver.hotel_id == hotel_id)
+    effective_hotel_id = enforce_hotel_access(current_user, hotel_id)
+    q = select(CostDriver).where(CostDriver.hotel_id == effective_hotel_id)
     if is_active is not None:
         q = q.where(CostDriver.is_active == is_active)
     result = await db.execute(q)
@@ -68,11 +80,13 @@ async def get_cost_driver(driver_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/", response_model=CostDriverSchema, status_code=201)
-async def create_cost_driver(data: CostDriverCreate, db: AsyncSession = Depends(get_db)):
-    # Verifica hotel
-    hotel = await db.get(Hotel, data.hotel_id)
-    if not hotel:
-        raise HTTPException(status_code=404, detail="Hotel non trovato")
+async def create_cost_driver(
+    data: CostDriverCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Forza hotel_id dall'utente
+    effective_hotel_id = enforce_hotel_access(current_user, data.hotel_id)
 
     # Valida driver_type
     try:
@@ -84,7 +98,7 @@ async def create_cost_driver(data: CostDriverCreate, db: AsyncSession = Depends(
     # Verifica unicità codice per hotel
     existing = await db.execute(
         select(CostDriver).where(
-            CostDriver.hotel_id == data.hotel_id,
+            CostDriver.hotel_id == effective_hotel_id,
             CostDriver.code == data.code,
             CostDriver.is_active == True,
         )
@@ -96,7 +110,7 @@ async def create_cost_driver(data: CostDriverCreate, db: AsyncSession = Depends(
         )
 
     driver = CostDriver(
-        hotel_id=data.hotel_id,
+        hotel_id=effective_hotel_id,
         name=data.name,
         code=data.code,
         driver_type=dtype,
@@ -115,10 +129,13 @@ async def update_cost_driver(
     driver_id: UUID,
     data: CostDriverUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     driver = await db.get(CostDriver, driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver non trovato")
+    if driver.hotel_id != current_user.hotel_id:
+        raise HTTPException(status_code=403, detail="Accesso non consentito a questo hotel")
 
     update_data = data.model_dump(exclude_unset=True)
 
@@ -138,10 +155,16 @@ async def update_cost_driver(
 
 
 @router.delete("/{driver_id}", status_code=204)
-async def delete_cost_driver(driver_id: UUID, db: AsyncSession = Depends(get_db)):
+async def delete_cost_driver(
+    driver_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     driver = await db.get(CostDriver, driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver non trovato")
+    if driver.hotel_id != current_user.hotel_id:
+        raise HTTPException(status_code=403, detail="Accesso non consentito a questo hotel")
     driver.is_active = False
     await db.commit()
     return None

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { costDriversApi } from '../lib/api'
+import { useAuthStore } from '../store/authStore'
 import toast from 'react-hot-toast'
 
 const DRIVER_TYPES = [
@@ -12,23 +13,27 @@ const DRIVER_TYPES = [
 ]
 
 export default function CostDriversPage() {
+  const user = useAuthStore(s => s.user)
+  const hotelId = user?.hotel_id
+
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState({ name: '', code: '', driver_type: 'volume', unit: '', description: '' })
   const qc = useQueryClient()
 
   const { data: drivers = [], isLoading } = useQuery({
-    queryKey: ['cost-drivers'],
-    queryFn: () => costDriversApi.list().then(r => r.data),
+    queryKey: ['cost-drivers', hotelId],
+    queryFn: () => costDriversApi.list(hotelId).then(r => r.data),
+    enabled: !!hotelId,
   })
 
   const createMutation = useMutation({
-    mutationFn: () => costDriversApi.create(form),
+    mutationFn: () => costDriversApi.create({ ...form, hotel_id: hotelId }),
     onSuccess: () => {
       toast.success('Driver creato')
       setShowForm(false)
       resetForm()
-      qc.invalidateQueries({ queryKey: ['cost-drivers'] })
+      qc.invalidateQueries({ queryKey: ['cost-drivers', hotelId] })
     },
     onError: (err) => toast.error(err.response?.data?.detail || 'Errore'),
   })
@@ -40,7 +45,7 @@ export default function CostDriversPage() {
       setShowForm(false)
       setEditingId(null)
       resetForm()
-      qc.invalidateQueries({ queryKey: ['cost-drivers'] })
+      qc.invalidateQueries({ queryKey: ['cost-drivers', hotelId] })
     },
     onError: (err) => toast.error(err.response?.data?.detail || 'Errore'),
   })
@@ -49,7 +54,7 @@ export default function CostDriversPage() {
     mutationFn: (id) => costDriversApi.delete(id),
     onSuccess: () => {
       toast.success('Driver disattivato')
-      qc.invalidateQueries({ queryKey: ['cost-drivers'] })
+      qc.invalidateQueries({ queryKey: ['cost-drivers', hotelId] })
     },
   })
 

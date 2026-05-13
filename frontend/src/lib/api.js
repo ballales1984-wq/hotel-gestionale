@@ -90,9 +90,9 @@ export const simulationApi = {
 }
 
 export const aiApi = {
-  driverDiscovery: () => api.get('/api/v1/ai/driver-discovery'),
-  forecast: (metric, periods) => api.get('/api/v1/ai/forecast', { params: { metric, periods } }),
-  anomalies: () => api.get('/api/v1/ai/anomalies'),
+  driverDiscovery: (hotelId) => api.get('/api/v1/ai/driver-discovery', { params: { hotel_id: hotelId } }),
+  forecast: (hotelId, metric, periods) => api.get('/api/v1/ai/forecast', { params: { hotel_id: hotelId, metric, periods } }),
+  anomalies: (hotelId) => api.get('/api/v1/ai/anomalies', { params: { hotel_id: hotelId } }),
 }
 
 export const pmsIntegrationsApi = {
