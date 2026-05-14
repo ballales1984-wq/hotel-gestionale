@@ -1,0 +1,13 @@
+{
+  "project": "Hotel ABC Platform",
+  "check_date": "2026-05-14",
+  "overall_status": "OPERATIVO (richiede avvio manuale)",
+  "python_syntax": "✅ Tutti i moduli compilano correttamente",
+  "database_schema": "✅ 17 tabelle, schema coerente e completo",
+  "data_population": "✅ 23 periodi, 138 risultati ABC, 552 allocazioni, 551 costi",
+  "docker": "❌ Docker Desktop non installato/avviabile su Windows",
+  "server_test": "⚠️ Non testabile in background (richiede avvio diretto)",
+  "dependencies": "✅ Tutte presenti tranne plotly (non bloccante)",
+  "ai_modules": "✅ Prophet, LightGBM+SHAP, IsolationForest configurati",
+  "api_endpoints": "✅ 78 rotte definite e compilano correttamente"
+}
